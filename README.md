@@ -1,77 +1,108 @@
+EXPRESS
 
-# CircuitMarket
+A Nigeria-first electronics marketplace with built-in price intelligence.
 
-**A Nigeria-first electronics marketplace and price intelligence platform.**
+EXPRESS helps people discover electronics, spare parts, components, repair tools and accessories, while making real-world prices easier to understand.
 
-CircuitMarket is being built to make electronics sourcing and price discovery more transparent, accessible, and dependable, starting in Nigeria.
+Our initial launch focus is Port Harcourt, Nigeria, with nationwide coverage as the platform develops.
 
-## What CircuitMarket does
+What EXPRESS offers
 
-CircuitMarket brings together two connected systems built around a shared product catalogue.
+1. Marketplace
 
-### 1. Marketplace
-
-A place for buyers to discover electronics, components, spare parts, repair tools, and accessories from sellers.
+A place for buyers to discover electronics and connect with sellers.
 
 The marketplace is designed for:
 
-- Buyers and electronics enthusiasts
 - Phone and electronics technicians
+- Buyers and electronics enthusiasts
 - Retailers and wholesalers
 - Spare-parts dealers and suppliers
 
-Sellers will be able to manage their stores and listings, while buyers can explore products and request seller contact through controlled contact-sharing workflows.
+Sellers will be able to manage their stores and listings. Buyers will be able to browse public listings and request seller contact through a controlled contact-sharing process.
 
-### 2. PriceCheck
+2. PriceCheck
 
-A price intelligence system that collects and reviews real-world price observations.
+PriceCheck is EXPRESS's built-in price intelligence feature.
 
-PriceCheck is designed to organize price information by:
+It organizes real-world price observations by:
 
 - Exact product and variant
-- Condition
-- Amount and currency
+- Product condition
+- Price and currency
 - Country and location
 - Observation date
 - Evidence and review status
 
-**Seller asking prices are kept separate from reviewed price observations.** Marketplace offers are not automatically treated as verified market prices. Only qualifying, reviewed observations contribute to published PriceCheck ranges.
+Seller asking prices are not verified market prices. Marketplace offers remain separate from reviewed price observations. Only qualifying, reviewed observations can contribute to published PriceCheck ranges.
 
-## Product coverage
+Product coverage
 
-The catalogue is designed to support:
+EXPRESS supports a catalogue designed for:
 
-- Finished electronics
-- Spare parts and components
+- Phones and smartphones
+- Tablets and computers
+- TVs and displays
+- Audio and networking equipment
+- Phone and computer spare parts
+- Electronics components
 - Repair tools and equipment
-- Accessories
-- Related electronics products
+- Accessories and other electronics
 
-Condition support includes new, used, and refurbished products, with parts-specific distinctions such as new aftermarket and used or salvaged components.
+Condition distinctions include new, used and refurbished products, with parts-specific distinctions such as new aftermarket and used or salvaged components.
 
-## Geographic scope
+Geographic coverage
 
-The initial focus is Nigeria, with a nationwide ambition. The platform's geographic structure is designed to support country, state, local government area, city, and area-level information where sufficient reliable data exists.
+The initial focus is Port Harcourt, Rivers State, Nigeria.
 
-The architecture is intended to support expansion into other countries over time.
+The data architecture supports nationwide Nigerian coverage, including states, local government areas, cities and areas. More detailed local price ranges will only be published when enough reliable observations are available.
 
-## Trust and data principles
+The platform is designed to support expansion into other countries in the future.
 
-CircuitMarket is being developed around several principles:
+Trust and privacy
 
-- Keep seller offers distinct from verified price intelligence.
-- Preserve product and variant accuracy.
+EXPRESS is built around these principles:
+
+- Keep seller asking prices separate from verified price intelligence.
+- Preserve exact product and variant information.
 - Use evidence-backed price observations and review workflows.
-- Apply moderation and seller-accountability controls.
-- Protect private seller contact information.
-- Make useful market information easier to contribute to and understand.
+- Apply seller verification and listing moderation.
+- Protect private seller phone and WhatsApp details.
+- Require an approved contact-unlock process before sharing private seller contact information.
+- Never invent products, listings or market prices.
 
-## Development status
+Technology
 
-CircuitMarket is under active development. Its backend foundation includes structured product and geographic catalogues, seller profiles, marketplace listings, price observations, review and moderation workflows, and price-range calculation infrastructure.
+- Next.js 14
+- React 18
+- TypeScript
+- Supabase
+- PostgreSQL
+- Supabase Row Level Security
 
-The first release will be developed incrementally, with a focus on a reliable core experience before expanding into additional features and regions.
+Development status
 
-## Mission
+The Supabase backend foundation is deployed. It includes product and geographic catalogues, seller profiles, marketplace listings, price observations, review and moderation workflows, and price-range calculation infrastructure.
 
-**Make electronics sourcing and price discovery more transparent, accessible, and dependable — starting in Nigeria.**
+The frontend is being connected to the existing backend incrementally.
+
+Authentication, seller onboarding, listing management, image uploads, price-report submission, moderation screens and seller contact unlocking still need frontend integration and end-to-end testing.
+
+Important backend note
+
+The live Supabase project already has its own deployed schema and security rules.
+
+Do not run "supabase/schema.sql" from this repository against the existing live project. That file is an obsolete initial draft, retained as historical starter material. The live database is managed through its existing migrations.
+
+Environment setup
+
+Copy ".env.example" to ".env.local" and configure:
+
+- "NEXT_PUBLIC_SUPABASE_URL"
+- "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+
+Use only the public publishable/anon key in the frontend. Never expose a service-role key or secret key in browser code or in a "NEXT_PUBLIC_" variable.
+
+Mission
+
+Make electronics sourcing and price discovery more transparent, accessible and dependable — starting in Nigeria.
