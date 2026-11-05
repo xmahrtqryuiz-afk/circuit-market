@@ -1,11 +1,10 @@
 /**
- * EXPRESS brand settings.
+ * EZPREZZ brand settings.
  * Keep customer-facing identity here so a future rebrand does not require
  * changing database names, API routes, or business logic.
  */
 export const brand = {
-  name: "EXPRESS",
-  logo: "/express-logo.png",
+  name: "EZPREZZ",
   tagline: "Find it. Compare it. Buy with confidence.",
   description: "Explore electronics, compare seller prices and connect with shops across Nigeria.",
   priceFeatureName: "PriceCheck",
