@@ -1,12 +1,12 @@
-EXPRESS
+EZPREZZ
 
 A Nigeria-first electronics marketplace with built-in price intelligence.
 
-EXPRESS helps people discover electronics, spare parts, components, repair tools and accessories, while making real-world prices easier to understand.
+EZPREZZ helps people discover electronics, spare parts, components, repair tools and accessories, while making real-world prices easier to understand.
 
 Our initial launch focus is Port Harcourt, Nigeria, with nationwide coverage as the platform develops.
 
-What EXPRESS offers
+What EZPREZZ offers
 
 1. Marketplace
 
@@ -23,7 +23,7 @@ Sellers will be able to manage their stores and listings. Buyers will be able to
 
 2. PriceCheck
 
-PriceCheck is EXPRESS's built-in price intelligence feature.
+PriceCheck is EZPREZZ's built-in price intelligence feature.
 
 It organizes real-world price observations by:
 
@@ -38,7 +38,7 @@ Seller asking prices are not verified market prices. Marketplace offers remain s
 
 Product coverage
 
-EXPRESS supports a catalogue designed for:
+EZPREZZ supports a catalogue designed for:
 
 - Phones and smartphones
 - Tablets and computers
@@ -61,7 +61,7 @@ The platform is designed to support expansion into other countries in the future
 
 Trust and privacy
 
-EXPRESS is built around these principles:
+EZPREZZ is built around these principles:
 
 - Keep seller asking prices separate from verified price intelligence.
 - Preserve exact product and variant information.
