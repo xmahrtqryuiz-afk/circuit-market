@@ -99,9 +99,9 @@ Environment setup
 Copy ".env.example" to ".env.local" and configure:
 
 - "NEXT_PUBLIC_SUPABASE_URL"
-- "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+- "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" (preferred; the legacy "NEXT_PUBLIC_SUPABASE_ANON_KEY" is also supported)
 
-Use only the public publishable/anon key in the frontend. Never expose a service-role key or secret key in browser code or in a "NEXT_PUBLIC_" variable.
+Use only the public publishable key (or legacy anon key) in the frontend. Never expose a service-role key or secret key in browser code or in a "NEXT_PUBLIC_" variable.
 
 Mission
 
