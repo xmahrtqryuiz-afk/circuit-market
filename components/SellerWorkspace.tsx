@@ -20,6 +20,8 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [verificationFile, setVerificationFile] = useState<File | null>(null);
+  const [listingImages, setListingImages] = useState<File[]>([]);
   const [storeForm, setStoreForm] = useState({ store_name: "", description: "", city: "Port Harcourt", area: "", contact_phone: "", whatsapp_number: "" });
   const [listingForm, setListingForm] = useState({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "Port Harcourt", area: "", notes: "" });
   const [requestForm, setRequestForm] = useState({ requested_name: "", brand: "", model: "", product_type: "finished_product", category_id: "", compatibility_notes: "" });
@@ -85,6 +87,17 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         whatsapp_number: storeForm.whatsapp_number.trim() || null,
       }, { onConflict: "store_id" });
       if (contactError) throw contactError;
+      if (verificationFile) {
+        const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+        if (!allowed.includes(verificationFile.type) || verificationFile.size > 10 * 1024 * 1024) throw new Error("Verification files must be JPG, PNG, WebP or PDF and no larger than 10 MB.");
+        const extension = verificationFile.name.split(".").pop()?.toLowerCase() || "file";
+        const path = user.id + "/" + saved.id + "/business/" + crypto.randomUUID() + "." + extension;
+        const { error: uploadError } = await supabase.storage.from("verification-documents").upload(path, verificationFile, { contentType: verificationFile.type, upsert: false });
+        if (uploadError) throw uploadError;
+        const { error: evidenceError } = await supabase.from("seller_verification_records").insert({ store_id: saved.id, submitted_by: user.id, verification_type: "business", verification_status: "pending", evidence_storage_path: path, evidence_mime_type: verificationFile.type });
+        if (evidenceError) { await supabase.storage.from("verification-documents").remove([path]); throw evidenceError; }
+        setVerificationFile(null);
+      }
       setMessage("Your store details have been saved. Verification remains subject to EZPREZZ review.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Your store details could not be saved.");
@@ -106,8 +119,19 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       if (insertError) throw insertError;
       const selectedProduct = catalogue.find(product => product.id === listingForm.product_id);
       setOwnListings(current => [{ ...createdListing, product_name: selectedProduct ? [selectedProduct.brand, selectedProduct.name, selectedProduct.model].filter(Boolean).join(" ") : "Catalogue product" } as SellerListing, ...current]);
+      let uploadedCount = 0;
+      for (const [index, file] of listingImages.entries()) {
+        const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const path = user.id + "/" + createdListing.id + "/" + crypto.randomUUID() + "." + extension;
+        const { error: uploadError } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type, upsert: false });
+        if (uploadError) throw uploadError;
+        const { error: imageError } = await supabase.from("listing_images").insert({ listing_id: createdListing.id, uploaded_by: user.id, storage_path: path, alt_text: selectedProduct?.name ?? "Seller listing image", sort_order: index });
+        if (imageError) { await supabase.storage.from("listing-images").remove([path]); throw imageError; }
+        uploadedCount += 1;
+      }
+      setListingImages([]);
       setListingForm({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: store.city, area: store.area ?? "", notes: "" });
-      setMessage("Listing submitted. It will remain private until store verification and listing review are complete.");
+      setMessage("Listing submitted with " + uploadedCount + " image(s). It will remain private until store verification and listing review are complete.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Listing could not be submitted.");
     } finally { setBusy(false); }
@@ -151,6 +175,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           <label>Phone number<input type="tel" value={storeForm.contact_phone} onChange={e => setStoreForm({ ...storeForm, contact_phone: e.target.value })} placeholder="Your business phone" /></label>
           <label>WhatsApp number<input type="tel" value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} placeholder="Include country code if possible" /></label>
           <label>Store description<input maxLength={500} value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} placeholder="What do you sell or specialise in?" /></label>
+          <label>Business verification document<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setVerificationFile(e.target.files?.[0] ?? null)} /><small>Private upload · JPG, PNG, WebP or PDF · max 10 MB</small></label>
         </div>
         <button className="primary" type="submit" disabled={busy}>{busy ? "Saving…" : store ? "Save store details" : "Register store"}</button>
       </form>
@@ -168,6 +193,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           <label>City<input required value={listingForm.city} onChange={e => setListingForm({ ...listingForm, city: e.target.value })} /></label>
           <label>Area<input value={listingForm.area} onChange={e => setListingForm({ ...listingForm, area: e.target.value })} /></label>
           <label>Additional details<input value={listingForm.notes} onChange={e => setListingForm({ ...listingForm, notes: e.target.value })} /></label>
+          <label>Product photos<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { const files = Array.from(e.target.files ?? []); if (files.length > 5 || files.some(file => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024)) { setError("Choose up to 5 JPG, PNG or WebP images, each no larger than 5 MB."); setListingImages([]); return; } setError(""); setListingImages(files); }} /><small>{listingImages.length} of 5 photos selected · max 5 MB each</small></label>
         </div>
         <button className="primary" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit listing for review"}</button>
         <p className="muted">Your asking price is displayed separately from PriceCheck market ranges.</p>
