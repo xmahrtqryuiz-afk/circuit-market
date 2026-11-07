@@ -152,3 +152,24 @@ footer small { color: #929b95; font-size: 10px; }
     min-height: 44px;
   }
 }
+
+
+/* Account access and protected seller-contact actions. */
+.account-actions { display: flex; align-items: center; }
+.account-trigger { min-height: 38px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--green); font-size: 11px; font-weight: 800; cursor: pointer; }
+.account-modal { max-width: 420px; }
+.account-form { grid-template-columns: 1fr; margin: 18px 0; }
+.account-form label { color: #536159; }
+.account-form input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); font: 13px 'DM Sans'; }
+.account-switch { display: block; margin: 15px auto 0; }
+.account-error { padding: 10px 12px; border-radius: 9px; background: #fff1ef; color: #9b3024 !important; font-size: 11px !important; }
+.account-status { display: block; margin-top: 10px; color: var(--green); font-size: 10px; }
+.contact-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 16px 0 10px; }
+.secondary-action { min-height: 42px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--green); font-size: 11px; font-weight: 800; cursor: pointer; }
+.secondary-action:disabled, .primary:disabled { opacity: .6; cursor: wait; }
+.unlocked-contact { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; padding: 13px; border: 1px solid #dce8df; border-radius: 10px; background: #edf4ef; font-size: 11px; }
+.unlocked-contact a { color: var(--green); font-weight: 800; text-decoration: underline; }
+@media (max-width: 640px) {
+  .account-trigger { min-height: 40px; padding: 8px 10px; font-size: 10px; }
+  .contact-actions { grid-template-columns: 1fr; }
+}
