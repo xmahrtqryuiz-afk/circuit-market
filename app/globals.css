@@ -205,3 +205,13 @@ footer small { color: #929b95; font-size: 10px; }
 .status-approved { background: #eaf4eb; color: #28633b; }
 .status-rejected, .status-suspended { background: #fff0ee; color: #9b3024; }
 .status-review_required, .status-pending { background: #fff6e5; color: #805a18; }
+
+.price-contribution { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; margin-top: 24px; }
+.price-contribution .formcard { min-width: 0; margin: 0; }
+.price-contribution .formgrid { gap: 13px; }
+.price-contribution .formgrid label { min-width: 0; }
+.price-contribution .formgrid input, .price-contribution .formgrid select { min-width: 0; }
+.price-contribution .seller-success, .price-contribution .account-error { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .price-contribution { grid-template-columns: 1fr; }
+}
