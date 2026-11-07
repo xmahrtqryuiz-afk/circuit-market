@@ -34,6 +34,10 @@ export default function AccountAccess({ onAuthChange }: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase) { setError("Account access is not configured. Please try again later."); return; }
+    if (mode === "signup" && (!name.trim() || !city.trim())) {
+      setError("Enter your name and city to create your account.");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       if (mode === "signup") {
