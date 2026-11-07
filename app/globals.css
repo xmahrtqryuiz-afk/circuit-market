@@ -264,3 +264,6 @@ footer small { color: #929b95; font-size: 10px; }
 .seller-edit-form input, .seller-edit-form select { width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 11px 'DM Sans'; }
 .seller-edit-form>div { display: flex; align-items: flex-end; gap: 7px; }
 @media (max-width: 560px) { .seller-edit-form { grid-template-columns: 1fr; } }
+
+.productvisual img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+.productvisual.large img { object-fit: contain; }
