@@ -12,7 +12,7 @@ import type { User } from "@supabase/supabase-js";
 type Category = { id: string; name: string; slug: string };
 type Product = {
   id: string; name: string; category: string; variant: string; condition: string;
-  price: number; seller: string; storeId: string; area: string; city: string; description: string;
+  price: number; seller: string; storeId: string; area: string; city: string; description: string; imageUrl: string | null; imageAlt: string;
 };
 type PriceRange = {
   id: string; product_id: string; variant_label: string | null; item_condition: string;
@@ -46,7 +46,7 @@ export default function Home() {
       try {
         const [catRes, listingRes, rangeRes] = await Promise.all([
           supabase.from("categories").select("id,name,slug").eq("is_active", true).order("sort_order"),
-          supabase.from("listings").select("id,product_id,seller_store_id,variant_label,item_condition,asking_price,city,area,notes,currency_code").eq("is_active", true).order("created_at", { ascending: false }).limit(60),
+          supabase.from("listings").select("id,product_id,seller_store_id,variant_label,item_condition,asking_price,city,area,notes,currency_code").eq("is_active", true).eq("moderation_status", "approved").order("created_at", { ascending: false }).limit(60),
           supabase.from("price_range_snapshots").select("id,product_id,variant_label,item_condition,currency_code,geographic_level,sample_count,min_price,median_price,max_price").eq("snapshot_status", "published").order("calculated_at", { ascending: false }).limit(60)
         ]);
         if (catRes.error) throw catRes.error;
@@ -56,19 +56,28 @@ export default function Home() {
         const publishedRanges = (rangeRes.data ?? []) as PriceRange[];
         const productIds = [...new Set([...listings.map(x => x.product_id), ...publishedRanges.map(x => x.product_id)])];
         const storeIds = [...new Set(listings.map(x => x.seller_store_id))];
-        const [prodRes, storeRes] = await Promise.all([
+        const [prodRes, storeRes, imageRes] = await Promise.all([
           productIds.length ? supabase.from("products").select("id,name,category_id,brand,model,description").in("id", productIds).eq("is_active", true) : Promise.resolve({ data: [], error: null }),
-          storeIds.length ? supabase.from("seller_stores").select("id,store_name,city,area").in("id", storeIds) : Promise.resolve({ data: [], error: null })
+          storeIds.length ? supabase.from("seller_stores").select("id,store_name,city,area").in("id", storeIds) : Promise.resolve({ data: [], error: null }),
+          listings.length ? supabase.from("listing_images").select("listing_id,storage_path,alt_text,sort_order").in("listing_id", listings.map(x => x.id)).eq("image_review_status", "approved").order("sort_order") : Promise.resolve({ data: [], error: null })
         ]);
         if (prodRes.error) throw prodRes.error;
         if (storeRes.error) throw storeRes.error;
+        if (imageRes.error) throw imageRes.error;
         const productMap = new Map((prodRes.data ?? []).map(x => [x.id, x]));
         const storeMap = new Map((storeRes.data ?? []).map(x => [x.id, x]));
         const catMap = new Map((catRes.data ?? []).map(x => [x.id, x.name]));
+        const imageMap = new Map<string, { url: string; alt: string }>();
+        for (const image of imageRes.data ?? []) {
+          if (!imageMap.has(image.listing_id)) {
+            const publicUrl = supabase.storage.from("listing-images").getPublicUrl(image.storage_path).data.publicUrl;
+            imageMap.set(image.listing_id, { url: publicUrl, alt: image.alt_text || "Product photo" });
+          }
+        }
         const mapped: Product[] = listings.flatMap(row => {
           const p = productMap.get(row.product_id); const s = storeMap.get(row.seller_store_id);
           if (!p || !s) return [];
-          return [{ id: row.id, name: p.name, category: catMap.get(p.category_id) ?? "Electronics", variant: row.variant_label || [p.brand, p.model].filter(Boolean).join(" ") || "Standard", condition: row.item_condition, price: Number(row.asking_price), seller: s.store_name, storeId: row.seller_store_id, area: row.area || s.area || "", city: row.city || s.city, description: row.notes || p.description || "Seller listing. Confirm availability and specifications with the seller." }];
+          return [{ id: row.id, name: p.name, category: catMap.get(p.category_id) ?? "Electronics", variant: row.variant_label || [p.brand, p.model].filter(Boolean).join(" ") || "Standard", condition: row.item_condition, price: Number(row.asking_price), seller: s.store_name, storeId: row.seller_store_id, area: row.area || s.area || "", city: row.city || s.city, description: row.notes || p.description || "Seller listing. Confirm availability and specifications with the seller.", imageUrl: imageMap.get(row.id)?.url ?? null, imageAlt: imageMap.get(row.id)?.alt ?? p.name }];
         });
         if (!alive) return;
         setCategories(catRes.data ?? []); setProducts(mapped); setRanges(publishedRanges); setCatalogueProductNames(Object.fromEntries((prodRes.data ?? []).map(x => [x.id, x.name])));
@@ -121,11 +130,11 @@ export default function Home() {
     {!loading && tab === "Sell" && <><section className="sectionhead"><div><div className="eyebrow">FOR SELLERS</div><h2>Seller workspace</h2><p className="muted">Register your store, manage inventory and request missing catalogue products.</p></div></section><SellerWorkspace user={user} categories={categories}/></>}
     <AdminDashboard user={user} active={tab === "Admin"} onAccessChange={setAdminAccess} categories={categories}/>
     <footer><a className="brand" href="#" aria-label={`${brand.name} home`}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><p>Built for electronics buyers and sellers in Nigeria.</p><small>EZPREZZ · Live catalogue connection</small></footer>
-    {selected && <div className="modalback" onClick={() => {setSelected(null); setContactError(""); setUnlockedContact(null);}}><div className="modal" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>{setSelected(null); setContactError(""); setUnlockedContact(null);}}>×</button><div className="productvisual large">▣</div><div className="eyebrow">{selected.category}</div><h2>{selected.name}</h2><p className="muted">{selected.variant} · {selected.condition}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p><div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><div className="contact-actions"><button className="primary" disabled={contactBusy} onClick={()=>unlockSellerContact("phone")}>{contactBusy ? "Please wait…" : "Unlock phone"}</button><button className="secondary-action" disabled={contactBusy} onClick={()=>unlockSellerContact("whatsapp")}>Unlock WhatsApp</button></div>{contactError && <p className="account-error" role="alert">{contactError}</p>}{unlockedContact && <div className="unlocked-contact"><b>{unlockedContact.channel === "phone" ? "Seller phone" : "Seller WhatsApp"}</b><a href={unlockedContact.channel === "phone" ? `tel:${unlockedContact.contact}` : `https://wa.me/${unlockedContact.contact.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{unlockedContact.contact}</a></div>}<button className="secondary-action full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
+    {selected && <div className="modalback" onClick={() => {setSelected(null); setContactError(""); setUnlockedContact(null);}}><div className="modal" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>{setSelected(null); setContactError(""); setUnlockedContact(null);}}>×</button><div className="productvisual large">{selected.imageUrl ? <img src={selected.imageUrl} alt={selected.imageAlt} /> : "▣"}</div><div className="eyebrow">{selected.category}</div><h2>{selected.name}</h2><p className="muted">{selected.variant} · {selected.condition}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p><div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><div className="contact-actions"><button className="primary" disabled={contactBusy} onClick={()=>unlockSellerContact("phone")}>{contactBusy ? "Please wait…" : "Unlock phone"}</button><button className="secondary-action" disabled={contactBusy} onClick={()=>unlockSellerContact("whatsapp")}>Unlock WhatsApp</button></div>{contactError && <p className="account-error" role="alert">{contactError}</p>}{unlockedContact && <div className="unlocked-contact"><b>{unlockedContact.channel === "phone" ? "Seller phone" : "Seller WhatsApp"}</b><a href={unlockedContact.channel === "phone" ? `tel:${unlockedContact.contact}` : `https://wa.me/${unlockedContact.contact.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{unlockedContact.contact}</a></div>}<button className="secondary-action full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
   </main>;
 }
 
 function ProductGrid({ products, onSelect }: { products: Product[]; onSelect: (p: Product) => void }) {
   if (!products.length) return <div className="empty">No approved listings are available yet. Try another category later.</div>;
-  return <div className="productgrid">{products.map(p=><button className="productcard" key={p.id} onClick={()=>onSelect(p)}><div className="productvisual">▣</div><div className="productmeta">{p.category} <span>·</span> {p.area || p.city}</div><b className="productname">{p.name}</b><small>{p.variant}</small><strong>{money(p.price)}</strong><span className="tag asking">Seller asking price</span></button>)}</div>;
+  return <div className="productgrid">{products.map(p=><button className="productcard" key={p.id} onClick={()=>onSelect(p)}><div className="productvisual">{p.imageUrl ? <img src={p.imageUrl} alt={p.imageAlt} loading="lazy" /> : "▣"}</div><div className="productmeta">{p.category} <span>·</span> {p.area || p.city}</div><b className="productname">{p.name}</b><small>{p.variant}</small><strong>{money(p.price)}</strong><span className="tag asking">Seller asking price</span></button>)}</div>;
 }
