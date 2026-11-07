@@ -58,17 +58,25 @@ Deno.serve(async (req: Request) => {
   const productIds = [...new Set([...listings.map((x: any) => x.product_id), ...prices.map((x: any) => x.product_id)])];
   const storeIds = [...new Set(listings.map((x: any) => x.seller_store_id))];
   const categoryIds = [...new Set(requests.map((x: any) => x.category_id).filter(Boolean))];
-  const [productsResult, storeNamesResult, categoriesResult, verificationEvidenceResult] = await Promise.all([
+  const [productsResult, storeNamesResult, categoriesResult, verificationEvidenceResult, priceEvidenceResult] = await Promise.all([
     productIds.length ? admin.from("products").select("id,name,brand,model").in("id", productIds) : Promise.resolve({ data: [], error: null }),
     storeIds.length ? admin.from("seller_stores").select("id,store_name").in("id", storeIds) : Promise.resolve({ data: [], error: null }),
     categoryIds.length ? admin.from("categories").select("id,name").in("id", categoryIds) : Promise.resolve({ data: [], error: null }),
     (storesResult.data ?? []).length ? admin.from("seller_verification_records").select("id,store_id,verification_type,evidence_storage_path,evidence_mime_type,created_at").in("store_id", (storesResult.data ?? []).map((x: any) => x.id)).eq("verification_type", "business").eq("verification_status", "pending").not("evidence_storage_path", "is", null).order("created_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
+    prices.length ? admin.from("price_observation_evidence").select("id,observation_id,storage_path,mime_type,created_at").in("observation_id", prices.map((x: any) => x.id)).order("created_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
   ]);
-  if (productsResult.error || storeNamesResult.error || categoriesResult.error || verificationEvidenceResult.error) return json({ error: "Moderation queue details could not be loaded" }, 500);
+  if (productsResult.error || storeNamesResult.error || categoriesResult.error || verificationEvidenceResult.error || priceEvidenceResult.error) return json({ error: "Moderation queue details could not be loaded" }, 500);
 
   const productNames = new Map((productsResult.data ?? []).map((x: any) => [x.id, [x.brand, x.name, x.model].filter(Boolean).join(" ")]));
   const storeNames = new Map((storeNamesResult.data ?? []).map((x: any) => [x.id, x.store_name]));
   const categoryNames = new Map((categoriesResult.data ?? []).map((x: any) => [x.id, x.name]));
+  const evidenceByObservation = new Map<string, any[]>();
+  for (const record of (priceEvidenceResult.data ?? []) as any[]) {
+    const signed = await admin.storage.from("price-evidence").createSignedUrl(record.storage_path, 300);
+    const items = evidenceByObservation.get(record.observation_id) ?? [];
+    items.push({ mimeType: record.mime_type, createdAt: record.created_at, signedUrl: signed.error ? null : signed.data.signedUrl });
+    evidenceByObservation.set(record.observation_id, items);
+  }
   const evidenceByStore = new Map<string, any>();
   for (const record of (verificationEvidenceResult.data ?? []) as any[]) {
     if (evidenceByStore.has(record.store_id)) continue;
@@ -81,7 +89,7 @@ Deno.serve(async (req: Request) => {
     queues: {
       stores: (storesResult.data ?? []).map((store: any) => ({ ...store, businessEvidence: evidenceByStore.get(store.id) ?? null })),
       listings: listings.map((x: any) => ({ ...x, product_name: productNames.get(x.product_id) ?? "Catalogue product", store_name: storeNames.get(x.seller_store_id) ?? "Seller store" })),
-      priceObservations: prices.map((x: any) => ({ ...x, product_name: productNames.get(x.product_id) ?? "Catalogue product" })),
+      priceObservations: prices.map((x: any) => ({ ...x, product_name: productNames.get(x.product_id) ?? "Catalogue product", evidenceFiles: evidenceByObservation.get(x.id) ?? [] })),
       productRequests: requests.map((x: any) => ({ ...x, category_name: categoryNames.get(x.category_id) ?? null })),
     },
     limits: { perQueue: 50 },
