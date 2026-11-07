@@ -124,7 +124,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         asking_price: Number(listingForm.asking_price), quantity: Number(listingForm.quantity),
         city: listingForm.city.trim(), area: listingForm.area.trim() || null,
         notes: listingForm.notes.trim() || null, moderation_status: "review_required",
-      }).select("id,product_id,asking_price,item_condition,variant_label,is_active,moderation_status,created_at").single();
+      }).select("id,product_id,asking_price,item_condition,variant_label,quantity,city,area,notes,is_active,moderation_status,created_at").single();
       if (insertError) throw insertError;
       const selectedProduct = catalogue.find(product => product.id === listingForm.product_id);
       setOwnListings(current => [{ ...createdListing, product_name: selectedProduct ? [selectedProduct.brand, selectedProduct.name, selectedProduct.model].filter(Boolean).join(" ") : "Catalogue product" } as SellerListing, ...current]);
