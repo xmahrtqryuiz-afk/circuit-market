@@ -45,16 +45,19 @@ Do not replace the Supabase client or project configuration as part of a visual 
 
 ### Seller workspace
 - Authenticated sellers can register a store, update its public profile and save phone/WhatsApp values in the private `seller_store_contacts` table.
-- Sellers can submit listings for review against active catalogue products.
-- Sellers can view their listing status.
+- Sellers can submit listings for review against active catalogue products, with up to five JPG/PNG/WebP photos (5 MB each) uploaded to the existing listing-images bucket.
+- Sellers can edit listing details and deactivate their own listings; the database trigger retains existing price-flag and moderation checks.
+- Sellers can view their listing status and recent product request statuses.
 - Sellers can request missing catalogue products; requests remain pending until the existing admin process accepts or rejects them.
+- Sellers can submit business verification documents to the existing private verification-documents bucket; only authorised reviewers receive short-lived signed review links.
 - Listings are not represented as public/approved merely because the seller submitted them.
 
 ### PriceCheck
 - Public visitors see published snapshots only.
 - Signed-in contributors can submit a price observation with product, variant, condition, amount, location, source details and optional public evidence URL.
+- Contributors can attach a private JPG/PNG/WebP/PDF evidence file (10 MB maximum) or an optional public evidence URL.
 - Contributors can see their own recent submissions and review status.
-- New observations are inserted as pending and do not automatically change published ranges.
+- New observations are inserted as pending and do not automatically change published ranges. Private evidence is served to authorised reviewers through short-lived signed URLs.
 
 ## Backend foundation and real data status
 
@@ -64,9 +67,9 @@ At the latest audit, core catalogue and marketplace tables were empty: `products
 
 ## Remaining frontend and integration work
 
-- Listing image upload, image ordering and removal using the existing storage bucket and policies.
-- Seller listing edit/deactivate flows and stronger inventory filtering.
-- Private evidence file upload for PriceCheck; current form supports source details and an optional public evidence link only.
+- Listing image ordering/removal UI and richer inventory filters.
+- Seller verification evidence review and upload retry/status polish.
+- Admin queues for user reports and product compatibility submissions.
 - Product request status/history for the requester.
 - Admin dashboard and role-gated review queues for stores, listings, product requests, price observations, reports and compatibility.
 - Secure first-admin bootstrap. The first `super_admin` role has not been assigned; never expose service-role credentials or create a public bootstrap path.
@@ -111,6 +114,7 @@ The current work has been committed to the existing working branch and verified 
 - It verifies the caller with Supabase Auth, reads the caller's roles from `admin_user_roles` server-side, and returns only queues allowed by those roles.
 - Pending queues include stores, listings, PriceCheck observations and product requests; each queue is capped at 50 records per request.
 - The browser never reads `admin_user_roles` or pending moderation tables directly. Existing RLS restrictions remain unchanged.
+- The dashboard UI is permission-aware and includes store verification, listing moderation (including explicit price-flag override confirmation), PriceCheck review, and product request acceptance/rejection.
 - The endpoint excludes private seller phone/WhatsApp data. Pending business verification evidence is exposed only as a five-minute signed URL to an authenticated administrator.
 - The frontend uses the existing review Edge Functions for decisions; these retain their own role checks, self-review restrictions and audit logging.
 - Business verification approval is disabled until a pending business evidence document is available.
