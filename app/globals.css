@@ -173,3 +173,21 @@ footer small { color: #929b95; font-size: 10px; }
   .account-trigger { min-height: 40px; padding: 8px 10px; font-size: 10px; }
   .contact-actions { grid-template-columns: 1fr; }
 }
+
+
+/* Seller workspace layout. */
+.seller-workspace { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 15px; }
+.seller-workspace .formcard { min-width: 0; margin: 0; padding: 20px; }
+.seller-workspace .formcard:first-of-type { grid-column: 1 / -1; }
+.seller-workspace .formcard h3 { margin-bottom: 14px; }
+.seller-workspace .formgrid { gap: 13px; }
+.seller-workspace .formgrid label { min-width: 0; }
+.seller-workspace .formgrid input, .seller-workspace .formgrid select { min-width: 0; }
+.store-status { margin: -7px 0 17px; color: var(--muted); font-size: 11px; }
+.store-status b { color: var(--green); text-transform: capitalize; }
+.seller-success { grid-column: 1 / -1; padding: 12px 14px; border: 1px solid #dce8df; border-radius: 10px; background: #edf4ef; color: var(--green); font-size: 11px; line-height: 1.6; }
+.seller-workspace .account-error { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .seller-workspace { grid-template-columns: 1fr; }
+  .seller-workspace .formcard:first-of-type { grid-column: auto; }
+}
