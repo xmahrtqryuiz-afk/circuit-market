@@ -313,3 +313,120 @@ textarea:disabled {
     align-items: flex-start;
   }
 }
+
+/* Marketplace discovery and PriceCheck visual hierarchy. */
+.productcard {
+  height: 100%;
+  align-content: start;
+  box-shadow: 0 3px 14px rgba(16, 35, 28, .035);
+}
+
+.productvisual {
+  overflow: hidden;
+  border: 1px solid rgba(16, 35, 28, .035);
+  background: linear-gradient(145deg, #edf3ee 0%, #f8faf7 72%);
+}
+
+.productmeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-height: 15px;
+  font-size: 10px;
+  letter-spacing: .01em;
+}
+
+.productname {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-height: 2.8em;
+  font-weight: 700;
+}
+
+.productcard strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+.pricegroup {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(16, 35, 28, .035);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.pricegroup::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--lime);
+  content: "";
+}
+
+.pricegroup > div:first-child {
+  min-height: 54px;
+  padding-left: 3px;
+}
+
+.pricegroup > div:first-child b {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pricegroup > div:first-child small {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f8faf7;
+  line-height: 1.4;
+}
+
+.priceitem {
+  margin-top: 5px;
+  padding: 14px 0 5px;
+}
+
+.priceitem span {
+  font-weight: 700;
+}
+
+.priceitem b {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em;
+}
+
+.priceitem small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .productcard {
+    gap: 7px;
+  }
+
+  .productvisual {
+    height: 126px;
+  }
+
+  .pricegroup {
+    padding: 16px 15px 13px 18px;
+    border-radius: 14px;
+  }
+
+  .priceitem {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .priceitem b {
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+}
