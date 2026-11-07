@@ -1,5 +1,5 @@
--- Repair signup profile creation and restore read grants required by existing public RLS policies.
--- RLS remains enabled; grants do not bypass the table policies.
+-- Repair signup profile creation and restore least-privilege catalogue reads.
+-- RLS remains enabled; column grants do not bypass the existing row policies.
 
 create or replace function private.handle_new_auth_user()
 returns trigger
@@ -28,5 +28,17 @@ begin
 end;
 $function$;
 
-grant select on table public.listings, public.seller_stores, public.listing_images
-to anon, authenticated;
+grant select (
+  id, seller_store_id, product_id, variant_label, item_condition,
+  asking_price, quantity, city, area, notes, is_active,
+  moderation_status, created_at, currency_code
+) on table public.listings to anon, authenticated;
+
+grant select (
+  id, owner_id, store_name, description, city, area,
+  verification_status, is_open, verification_level
+) on table public.seller_stores to anon, authenticated;
+
+grant select (
+  listing_id, storage_path, alt_text, sort_order, image_review_status
+) on table public.listing_images to anon, authenticated;
