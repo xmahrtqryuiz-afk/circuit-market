@@ -255,3 +255,12 @@ footer small { color: #929b95; font-size: 10px; }
   .admin-item-actions { width: 100%; }
   .admin-queue { padding: 15px; }
 }
+
+.seller-listing-editable { flex-wrap: wrap; }
+.seller-listing-editable .seller-listing-meta>div { display: flex; flex-wrap: wrap; gap: 6px; }
+.seller-listing-editable .seller-listing-meta button { min-height: 30px; padding: 6px 9px; font-size: 9px; }
+.seller-edit-form { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 13px; border-radius: 10px; background: #f7f9f6; }
+.seller-edit-form label { display: flex; min-width: 0; flex-direction: column; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.seller-edit-form input, .seller-edit-form select { width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 11px 'DM Sans'; }
+.seller-edit-form>div { display: flex; align-items: flex-end; gap: 7px; }
+@media (max-width: 560px) { .seller-edit-form { grid-template-columns: 1fr; } }
