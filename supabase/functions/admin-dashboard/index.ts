@@ -41,8 +41,10 @@ Deno.serve(async (req: Request) => {
   const canModerate = roles.some((role) => ["super_admin", "moderator"].includes(role));
   const canReviewPrices = roles.some((role) => ["super_admin", "price_reviewer", "moderator"].includes(role));
   const canManageCatalogue = roles.some((role) => ["super_admin", "catalog_manager"].includes(role));
+  const canManageReports = roles.some((role) => ["super_admin", "moderator", "support"].includes(role));
+  const canReviewCompatibility = roles.some((role) => ["super_admin", "catalog_manager"].includes(role));
 
-  const [storesResult, listingsResult, pricesResult, requestsResult] = await Promise.all([
+  const [storesResult, listingsResult, pricesResult, requestsResult, reportsResult, compatibilityResult] = await Promise.all([
     canModerate ? admin.from("seller_stores").select("id,store_name,description,city,area,verification_status,verification_level,created_at").eq("verification_status", "pending").order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
     canModerate ? admin.from("listings").select("id,product_id,seller_store_id,variant_label,item_condition,asking_price,quantity,city,area,notes,moderation_status,price_flag_status,price_flag_reason,created_at").in("moderation_status", ["pending", "review_required"]).order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
     canReviewPrices ? admin.from("price_observations").select("id,product_id,submitted_by,variant_label,item_condition,amount_value,city,area,source_type,source_description,evidence_url,observed_on,review_status,is_duplicate,is_price_outlier,created_at").eq("review_status", "pending").order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
@@ -55,7 +57,8 @@ Deno.serve(async (req: Request) => {
   const listings = listingsResult.data ?? [];
   const prices = pricesResult.data ?? [];
   const requests = requestsResult.data ?? [];
-  const productIds = [...new Set([...listings.map((x: any) => x.product_id), ...prices.map((x: any) => x.product_id)])];
+  const compatibilities = compatibilityResult.data ?? [];
+  const productIds = [...new Set([...listings.map((x: any) => x.product_id), ...prices.map((x: any) => x.product_id), ...compatibilities.flatMap((x: any) => [x.part_product_id, x.compatible_product_id])])];
   const storeIds = [...new Set(listings.map((x: any) => x.seller_store_id))];
   const categoryIds = [...new Set(requests.map((x: any) => x.category_id).filter(Boolean))];
   const [productsResult, storeNamesResult, categoriesResult, verificationEvidenceResult, priceEvidenceResult] = await Promise.all([
@@ -91,6 +94,8 @@ Deno.serve(async (req: Request) => {
       listings: listings.map((x: any) => ({ ...x, product_name: productNames.get(x.product_id) ?? "Catalogue product", store_name: storeNames.get(x.seller_store_id) ?? "Seller store" })),
       priceObservations: prices.map((x: any) => ({ ...x, product_name: productNames.get(x.product_id) ?? "Catalogue product", evidenceFiles: evidenceByObservation.get(x.id) ?? [] })),
       productRequests: requests.map((x: any) => ({ ...x, category_name: categoryNames.get(x.category_id) ?? null })),
+      reports: reportsResult.data ?? [],
+      compatibilities: compatibilities.map((x: any) => ({ ...x, part_product_name: productNames.get(x.part_product_id) ?? "Part product", compatible_product_name: productNames.get(x.compatible_product_id) ?? "Compatible product" })),
     },
     limits: { perQueue: 50 },
   });
