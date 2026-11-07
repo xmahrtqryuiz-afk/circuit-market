@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { brand } from "../config/brand";
 import { supabase } from "../lib/supabase";
+import AccountAccess from "../components/AccountAccess";
+import type { User } from "@supabase/supabase-js";
 
 type Category = { id: string; name: string; slug: string };
 type Product = {
   id: string; name: string; category: string; variant: string; condition: string;
-  price: number; seller: string; area: string; city: string; description: string;
+  price: number; seller: string; storeId: string; area: string; city: string; description: string;
 };
 type PriceRange = {
   id: string; product_id: string; variant_label: string | null; item_condition: string;
@@ -27,6 +29,10 @@ export default function Home() {
   const [selected, setSelected] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactError, setContactError] = useState("");
+  const [unlockedContact, setUnlockedContact] = useState<{ channel: string; contact: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -58,7 +64,7 @@ export default function Home() {
         const mapped: Product[] = listings.flatMap(row => {
           const p = productMap.get(row.product_id); const s = storeMap.get(row.seller_store_id);
           if (!p || !s) return [];
-          return [{ id: row.id, name: p.name, category: catMap.get(p.category_id) ?? "Electronics", variant: row.variant_label || [p.brand, p.model].filter(Boolean).join(" ") || "Standard", condition: row.item_condition, price: Number(row.asking_price), seller: s.store_name, area: row.area || s.area || "", city: row.city || s.city, description: row.notes || p.description || "Seller listing. Confirm availability and specifications with the seller." }];
+          return [{ id: row.id, name: p.name, category: catMap.get(p.category_id) ?? "Electronics", variant: row.variant_label || [p.brand, p.model].filter(Boolean).join(" ") || "Standard", condition: row.item_condition, price: Number(row.asking_price), seller: s.store_name, storeId: row.seller_store_id, area: row.area || s.area || "", city: row.city || s.city, description: row.notes || p.description || "Seller listing. Confirm availability and specifications with the seller." }];
         });
         if (!alive) return;
         setCategories(catRes.data ?? []); setProducts(mapped); setRanges(publishedRanges); setCatalogueProductNames(Object.fromEntries((prodRes.data ?? []).map(x => [x.id, x.name])));
@@ -71,10 +77,30 @@ export default function Home() {
   }, []);
 
   const categoryNames = ["All", ...categories.map(c => c.name)];
+
+  async function unlockSellerContact(channel: "phone" | "whatsapp") {
+    if (!selected) return;
+    setContactError("");
+    setUnlockedContact(null);
+    if (!user) { setContactError("Please sign in using the account button above before contacting a seller."); return; }
+    if (!supabase) { setContactError("The secure contact service is unavailable. Please try again later."); return; }
+    setContactBusy(true);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke("unlock-seller-contact", {
+        body: { store_id: selected.storeId, listing_id: selected.id, channel },
+      });
+      if (invokeError) throw invokeError;
+      if (data?.error) throw new Error(data.error);
+      if (typeof data?.contact !== "string" || !data.contact) throw new Error("Seller contact details were not returned.");
+      setUnlockedContact({ channel, contact: data.contact });
+    } catch (err) {
+      setContactError(err instanceof Error ? err.message : "Could not unlock seller contact. Please try again.");
+    } finally { setContactBusy(false); }
+  }
   const filtered = useMemo(() => products.filter(p => (category === "All" || p.category === category) && (p.name + " " + p.variant + " " + p.seller + " " + p.category).toLowerCase().includes(query.toLowerCase())), [products, category, query]);
 
   return <main className="shell">
-    <header className="topbar"><a className="brand" href="#" aria-label={`${brand.name} home`} onClick={() => setTab("Home")}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><span className="location">⌖ {brand.defaultLocationLabel}</span></header>
+    <header className="topbar"><a className="brand" href="#" aria-label={`${brand.name} home`} onClick={() => setTab("Home")}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><span className="location">⌖ {brand.defaultLocationLabel}</span><AccountAccess onAuthChange={setUser}/></header>
     <section className="hero"><div className="eyebrow">{brand.name} · ELECTRONICS MARKETPLACE</div><h1>Find it. Compare it.<br/><em>Buy with confidence.</em></h1><p>Explore electronics, compare seller prices and connect with shops around Port Harcourt.</p><div className="searchbar"><span>⌕</span><input value={query} onChange={e => {setQuery(e.target.value); setTab("Explore");}} placeholder="Search phones, parts, laptops, tools..."/><button onClick={() => setTab("Explore")}>Search</button></div><div className="hero-note"><span className="dot"/> Live catalogue · Published price evidence only</div></section>
     <nav className="tabs">{["Home", "Explore", "PriceCheck", "Sell"].map(t => <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t === "PriceCheck" ? "₦ PriceCheck" : t}</button>)}</nav>
     {error && <div className="notice">{error} Check the public Supabase URL and anon key in the deployment environment.</div>}
@@ -90,7 +116,7 @@ export default function Home() {
     {!loading && tab === "PriceCheck" && <><section className="sectionhead"><div><div className="eyebrow">PRICE INTELLIGENCE</div><h2>PriceCheck</h2><p className="muted">Published ranges from reviewed price evidence.</p></div></section><div className="pricebanner"><span>₦</span><div><b>Evidence before estimates</b><small>Seller asking prices are not treated as verified market prices.</small></div></div>{ranges.length ? <div className="pricegroups">{ranges.map(r => <article className="pricegroup" key={r.id}><div><b>{catalogueProductNames[r.product_id] || "Product price range"}{r.variant_label ? ` · ${r.variant_label}` : ""}</b><small>{r.item_condition} · {r.geographic_level} · {r.sample_count} reviewed observations</small></div><div className="priceitems"><div className="priceitem"><span>Published range</span><b>{r.min_price == null || r.max_price == null ? "Not available" : `${money(Number(r.min_price), r.currency_code)} – ${money(Number(r.max_price), r.currency_code)}`}</b><small>Median: {r.median_price == null ? "—" : money(Number(r.median_price), r.currency_code)}</small></div></div></article>)}</div> : <div className="empty">No published price ranges yet. Price reports will appear here only after review and when evidence thresholds are met.</div>}</>}
     {!loading && tab === "Sell" && <><section className="sectionhead"><div><div className="eyebrow">FOR SELLERS</div><h2>Seller listings</h2><p className="muted">Seller accounts and listing management are the next development stage.</p></div></section><div className="empty">Seller registration is not enabled yet. We are first validating the public catalogue and access rules.</div></>}
     <footer><a className="brand" href="#" aria-label={`${brand.name} home`}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><p>Built for electronics buyers and sellers in Nigeria.</p><small>EZPREZZ · Live catalogue connection</small></footer>
-    {selected && <div className="modalback" onClick={() => setSelected(null)}><div className="modal" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setSelected(null)}>×</button><div className="productvisual large">▣</div><div className="eyebrow">{selected.category}</div><h2>{selected.name}</h2><p className="muted">{selected.variant} · {selected.condition}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p><div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><button className="primary full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
+    {selected && <div className="modalback" onClick={() => {setSelected(null); setContactError(""); setUnlockedContact(null);}}><div className="modal" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>{setSelected(null); setContactError(""); setUnlockedContact(null);}}>×</button><div className="productvisual large">▣</div><div className="eyebrow">{selected.category}</div><h2>{selected.name}</h2><p className="muted">{selected.variant} · {selected.condition}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p><div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><div className="contact-actions"><button className="primary" disabled={contactBusy} onClick={()=>unlockSellerContact("phone")}>{contactBusy ? "Please wait…" : "Unlock phone"}</button><button className="secondary-action" disabled={contactBusy} onClick={()=>unlockSellerContact("whatsapp")}>Unlock WhatsApp</button></div>{contactError && <p className="account-error" role="alert">{contactError}</p>}{unlockedContact && <div className="unlocked-contact"><b>{unlockedContact.channel === "phone" ? "Seller phone" : "Seller WhatsApp"}</b><a href={unlockedContact.channel === "phone" ? `tel:${unlockedContact.contact}` : `https://wa.me/${unlockedContact.contact.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{unlockedContact.contact}</a></div>}<button className="secondary-action full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
   </main>;
 }
 
