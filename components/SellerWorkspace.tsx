@@ -7,13 +7,14 @@ import { supabase } from "../lib/supabase";
 type Category = { id: string; name: string };
 type Store = { id: string; store_name: string; description: string | null; city: string; area: string | null; verification_status: string; verification_level: string; is_open: boolean };
 type CatalogueProduct = { id: string; name: string; brand: string | null; model: string | null; category_id: string };
+type SellerListing = { id: string; product_id: string; product_name: string; asking_price: number; item_condition: string; variant_label: string | null; is_active: boolean; moderation_status: string; created_at: string };
 
 const conditions = ["new", "used", "refurbished", "new_aftermarket", "used_salvaged"];
 const productTypes = ["finished_product", "spare_part", "component", "tool", "accessory"];
 
 export default function SellerWorkspace({ user, categories }: { user: User | null; categories: Category[] }) {
   const [store, setStore] = useState<Store | null>(null);
-  const [contacts, setContacts] = useState({ contact_phone: "", whatsapp_number: "" });
+  const [ownListings, setOwnListings] = useState<SellerListing[]>([]);
   const [catalogue, setCatalogue] = useState<CatalogueProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -26,7 +27,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   useEffect(() => {
     let active = true;
     async function loadWorkspace() {
-      if (!user || !supabase) { setStore(null); setCatalogue([]); return; }
+      if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); return; }
       setLoading(true); setError("");
       try {
         const [storeResult, productsResult] = await Promise.all([
@@ -43,8 +44,12 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           const { data: contactData, error: contactError } = await supabase.from("seller_store_contacts").select("contact_phone,whatsapp_number").eq("store_id", s.id).maybeSingle();
           if (contactError) throw contactError;
           if (!active) return;
-          setContacts({ contact_phone: contactData?.contact_phone ?? "", whatsapp_number: contactData?.whatsapp_number ?? "" });
           setStoreForm({ store_name: s.store_name, description: s.description ?? "", city: s.city, area: s.area ?? "", contact_phone: contactData?.contact_phone ?? "", whatsapp_number: contactData?.whatsapp_number ?? "" });
+          const { data: listingData, error: listingError } = await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label,is_active,moderation_status,created_at").eq("seller_store_id", s.id).order("created_at", { ascending: false });
+          if (listingError) throw listingError;
+          const productNames = new Map((productsResult.data ?? []).map(p => [p.id, [p.brand, p.name, p.model].filter(Boolean).join(" ")]));
+          if (!active) return;
+          setOwnListings((listingData ?? []).map(row => ({ ...row, product_name: productNames.get(row.product_id) ?? "Catalogue product" })) as SellerListing[]);
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Could not load your seller workspace.");
@@ -80,7 +85,6 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         whatsapp_number: storeForm.whatsapp_number.trim() || null,
       }, { onConflict: "store_id" });
       if (contactError) throw contactError;
-      setContacts({ contact_phone: storeForm.contact_phone, whatsapp_number: storeForm.whatsapp_number });
       setMessage("Your store details have been saved. Verification remains subject to EZPREZZ review.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Your store details could not be saved.");
@@ -92,14 +96,16 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     if (!user || !store || !supabase) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const { error: insertError } = await supabase.from("listings").insert({
+      const { data: createdListing, error: insertError } = await supabase.from("listings").insert({
         seller_store_id: store.id, product_id: listingForm.product_id,
         variant_label: listingForm.variant_label.trim() || null, item_condition: listingForm.item_condition,
         asking_price: Number(listingForm.asking_price), quantity: Number(listingForm.quantity),
         city: listingForm.city.trim(), area: listingForm.area.trim() || null,
         notes: listingForm.notes.trim() || null, moderation_status: "review_required",
-      });
+      }).select("id,product_id,asking_price,item_condition,variant_label,is_active,moderation_status,created_at").single();
       if (insertError) throw insertError;
+      const selectedProduct = catalogue.find(product => product.id === listingForm.product_id);
+      setOwnListings(current => [{ ...createdListing, product_name: selectedProduct ? [selectedProduct.brand, selectedProduct.name, selectedProduct.model].filter(Boolean).join(" ") : "Catalogue product" } as SellerListing, ...current]);
       setListingForm({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: store.city, area: store.area ?? "", notes: "" });
       setMessage("Listing submitted. It will remain private until store verification and listing review are complete.");
     } catch (err) {
@@ -166,6 +172,11 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         <button className="primary" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit listing for review"}</button>
         <p className="muted">Your asking price is displayed separately from PriceCheck market ranges.</p>
       </form> : <p className="muted">The catalogue currently has no active products. Request a missing product below; once the catalogue team accepts it, it will become available here.</p>}
+    </section>}
+
+    {store && <section className="formcard seller-listings">
+      <div className="eyebrow">INVENTORY OVERVIEW</div><h3>Your listings <span className="count-pill">{ownListings.length}</span></h3>
+      {ownListings.length ? <div className="seller-listing-list">{ownListings.map(item => <article className="seller-listing-row" key={item.id}><div><b>{item.product_name}</b><small>{item.variant_label ? `${item.variant_label} · ` : ""}{item.item_condition.replaceAll("_", " ")}</small></div><div className="seller-listing-meta"><strong>₦{Number(item.asking_price).toLocaleString("en-NG")}</strong><span className={`listing-status status-${item.moderation_status}`}>{item.moderation_status.replaceAll("_", " ")}</span></div></article>)}</div> : <p className="muted">You have not submitted any listings yet.</p>}
     </section>}
 
     <section className="formcard">
