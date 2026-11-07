@@ -69,7 +69,7 @@ At the latest audit, core catalogue and marketplace tables were empty: `products
 
 - Listing image ordering/removal UI and richer inventory filters.
 - Seller verification evidence review and upload retry/status polish.
-- Admin queues for user reports and product compatibility submissions.
+- Build and real-session testing of report and compatibility moderation queues.
 - Product request status/history for the requester.
 - Admin dashboard and role-gated review queues for stores, listings, product requests, price observations, reports and compatibility.
 - Secure first-admin bootstrap. The first `super_admin` role has not been assigned; never expose service-role credentials or create a public bootstrap path.
@@ -114,7 +114,7 @@ The current work has been committed to the existing working branch and verified 
 - It verifies the caller with Supabase Auth, reads the caller's roles from `admin_user_roles` server-side, and returns only queues allowed by those roles.
 - Pending queues include stores, listings, PriceCheck observations and product requests; each queue is capped at 50 records per request.
 - The browser never reads `admin_user_roles` or pending moderation tables directly. Existing RLS restrictions remain unchanged.
-- The dashboard UI is permission-aware and includes store verification, listing moderation (including explicit price-flag override confirmation), PriceCheck review, and product request acceptance/rejection.
+- The dashboard UI is permission-aware and includes store verification, listing moderation (including explicit price-flag override confirmation), PriceCheck review, product request acceptance/rejection, user-report triage and product-compatibility review.
 - The endpoint excludes private seller phone/WhatsApp data. Pending business verification evidence is exposed only as a five-minute signed URL to an authenticated administrator.
 - The frontend uses the existing review Edge Functions for decisions; these retain their own role checks, self-review restrictions and audit logging.
 - Business verification approval is disabled until a pending business evidence document is available.
