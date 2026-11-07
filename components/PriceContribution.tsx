@@ -14,6 +14,7 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [form, setForm] = useState({ product_id: "", variant_label: "", item_condition: "new", amount_value: "", city: "Port Harcourt", area: "", source_type: "shop_quote", source_description: "", evidence_url: "", observed_on: new Date().toISOString().slice(0, 10) });
 
   useEffect(() => {
@@ -52,9 +53,26 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
         observed_on: form.observed_on, currency_code: "NGN", review_status: "pending", reviewed_at: null,
       }).select("id,product_id,amount_value,item_condition,review_status,observed_on,created_at").single();
       if (insertError) throw insertError;
+      let evidenceWarning = "";
+      if (evidenceFile) {
+        const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+        if (!allowed.includes(evidenceFile.type) || evidenceFile.size > 10 * 1024 * 1024) {
+          evidenceWarning = " The report was saved, but the evidence file must be JPG, PNG, WebP or PDF and no larger than 10 MB.";
+        } else {
+          const extension = evidenceFile.name.split(".").pop()?.toLowerCase() || "file";
+          const path = user.id + "/" + data.id + "/" + crypto.randomUUID() + "." + extension;
+          const { error: uploadError } = await supabase.storage.from("price-evidence").upload(path, evidenceFile, { contentType: evidenceFile.type, upsert: false });
+          if (uploadError) evidenceWarning = " The report was saved, but the evidence upload failed: " + uploadError.message;
+          else {
+            const { error: evidenceError } = await supabase.from("price_observation_evidence").insert({ observation_id: data.id, uploaded_by: user.id, storage_path: path, mime_type: evidenceFile.type });
+            if (evidenceError) { await supabase.storage.from("price-evidence").remove([path]); evidenceWarning = " The report was saved, but its evidence record could not be attached: " + evidenceError.message; }
+          }
+        }
+      }
       setReports(current => [data as Report, ...current]);
       setForm({ product_id: "", variant_label: "", item_condition: "new", amount_value: "", city: "Port Harcourt", area: "", source_type: "shop_quote", source_description: "", evidence_url: "", observed_on: new Date().toISOString().slice(0, 10) });
-      setMessage("Your price observation has been submitted for review. It will not affect public PriceCheck ranges unless approved and eligible.");
+      setEvidenceFile(null);
+      setMessage("Your price observation has been submitted for review. It will not affect public PriceCheck ranges unless approved and eligible." + evidenceWarning);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Price observation could not be submitted.");
     } finally { setBusy(false); }
@@ -85,6 +103,7 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
           <label>Date observed<input required type="date" value={form.observed_on} onChange={e => setForm({ ...form, observed_on: e.target.value })} /></label>
           <label>Source details<input required maxLength={500} value={form.source_description} onChange={e => setForm({ ...form, source_description: e.target.value })} placeholder="Where and how was this price confirmed?" /></label>
           <label>Evidence link (optional)<input type="url" value={form.evidence_url} onChange={e => setForm({ ...form, evidence_url: e.target.value })} placeholder="Link to a public listing or evidence" /></label>
+          <label>Private evidence file (optional)<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setEvidenceFile(e.target.files?.[0] ?? null)} /><small>Private to you and authorised reviewers · JPG, PNG, WebP or PDF · max 10 MB</small></label>
         </div>
         <button className="primary" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit for review"}</button>
         <p className="muted">Submit only prices you actually observed. Your report stays pending until reviewed and never becomes a public range automatically.</p>
