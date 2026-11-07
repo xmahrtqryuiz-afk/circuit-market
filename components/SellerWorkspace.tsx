@@ -120,18 +120,19 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       const selectedProduct = catalogue.find(product => product.id === listingForm.product_id);
       setOwnListings(current => [{ ...createdListing, product_name: selectedProduct ? [selectedProduct.brand, selectedProduct.name, selectedProduct.model].filter(Boolean).join(" ") : "Catalogue product" } as SellerListing, ...current]);
       let uploadedCount = 0;
+      let imageWarning = "";
       for (const [index, file] of listingImages.entries()) {
         const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
         const path = user.id + "/" + createdListing.id + "/" + crypto.randomUUID() + "." + extension;
         const { error: uploadError } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type, upsert: false });
-        if (uploadError) throw uploadError;
+        if (uploadError) { imageWarning = uploadError.message; break; }
         const { error: imageError } = await supabase.from("listing_images").insert({ listing_id: createdListing.id, uploaded_by: user.id, storage_path: path, alt_text: selectedProduct?.name ?? "Seller listing image", sort_order: index });
-        if (imageError) { await supabase.storage.from("listing-images").remove([path]); throw imageError; }
+        if (imageError) { await supabase.storage.from("listing-images").remove([path]); imageWarning = imageError.message; break; }
         uploadedCount += 1;
       }
       setListingImages([]);
       setListingForm({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: store.city, area: store.area ?? "", notes: "" });
-      setMessage("Listing submitted with " + uploadedCount + " image(s). It will remain private until store verification and listing review are complete.");
+      setMessage("Listing submitted with " + uploadedCount + " image(s)." + (imageWarning ? " Some photos could not be uploaded: " + imageWarning : "") + " It will remain private until store verification and listing review are complete.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Listing could not be submitted.");
     } finally { setBusy(false); }
