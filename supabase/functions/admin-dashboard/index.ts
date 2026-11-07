@@ -49,8 +49,10 @@ Deno.serve(async (req: Request) => {
     canModerate ? admin.from("listings").select("id,product_id,seller_store_id,variant_label,item_condition,asking_price,quantity,city,area,notes,moderation_status,price_flag_status,price_flag_reason,created_at").in("moderation_status", ["pending", "review_required"]).order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
     canReviewPrices ? admin.from("price_observations").select("id,product_id,submitted_by,variant_label,item_condition,amount_value,city,area,source_type,source_description,evidence_url,observed_on,review_status,is_duplicate,is_price_outlier,created_at").eq("review_status", "pending").order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
     canManageCatalogue ? admin.from("product_requests").select("id,requested_by,requested_name,brand,model,product_type,category_id,compatibility_notes,request_status,created_at").eq("request_status", "pending").order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
+    canManageReports ? admin.from("user_reports").select("id,reporter_id,target_type,target_id,reason,details,report_status,created_at").in("report_status", ["open", "reviewing"]).order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
+    canReviewCompatibility ? admin.from("product_compatibilities").select("id,part_product_id,compatible_product_id,compatibility_type,notes,created_at").eq("review_status", "pending").order("created_at").limit(50) : Promise.resolve({ data: [], error: null }),
   ]);
-  for (const result of [storesResult, listingsResult, pricesResult, requestsResult]) {
+  for (const result of [storesResult, listingsResult, pricesResult, requestsResult, reportsResult, compatibilityResult]) {
     if (result.error) return json({ error: "A moderation queue could not be loaded" }, 500);
   }
 
