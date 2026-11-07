@@ -1,0 +1,186 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
+
+type Category = { id: string; name: string };
+type Store = { id: string; store_name: string; description: string | null; city: string; area: string | null; verification_status: string; verification_level: string; is_open: boolean };
+type CatalogueProduct = { id: string; name: string; brand: string | null; model: string | null; category_id: string };
+
+const conditions = ["new", "used", "refurbished", "new_aftermarket", "used_salvaged"];
+const productTypes = ["finished_product", "spare_part", "component", "tool", "accessory"];
+
+export default function SellerWorkspace({ user, categories }: { user: User | null; categories: Category[] }) {
+  const [store, setStore] = useState<Store | null>(null);
+  const [contacts, setContacts] = useState({ contact_phone: "", whatsapp_number: "" });
+  const [catalogue, setCatalogue] = useState<CatalogueProduct[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [storeForm, setStoreForm] = useState({ store_name: "", description: "", city: "Port Harcourt", area: "", contact_phone: "", whatsapp_number: "" });
+  const [listingForm, setListingForm] = useState({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "Port Harcourt", area: "", notes: "" });
+  const [requestForm, setRequestForm] = useState({ requested_name: "", brand: "", model: "", product_type: "finished_product", category_id: "", compatibility_notes: "" });
+
+  useEffect(() => {
+    let active = true;
+    async function loadWorkspace() {
+      if (!user || !supabase) { setStore(null); setCatalogue([]); return; }
+      setLoading(true); setError("");
+      try {
+        const [storeResult, productsResult] = await Promise.all([
+          supabase.from("seller_stores").select("id,store_name,description,city,area,verification_status,verification_level,is_open").eq("owner_id", user.id).maybeSingle(),
+          supabase.from("products").select("id,name,brand,model,category_id").eq("is_active", true).order("name").limit(300),
+        ]);
+        if (storeResult.error) throw storeResult.error;
+        if (productsResult.error) throw productsResult.error;
+        if (!active) return;
+        setStore(storeResult.data as Store | null);
+        setCatalogue((productsResult.data ?? []) as CatalogueProduct[]);
+        if (storeResult.data) {
+          const s = storeResult.data as Store;
+          const { data: contactData, error: contactError } = await supabase.from("seller_store_contacts").select("contact_phone,whatsapp_number").eq("store_id", s.id).maybeSingle();
+          if (contactError) throw contactError;
+          if (!active) return;
+          setContacts({ contact_phone: contactData?.contact_phone ?? "", whatsapp_number: contactData?.whatsapp_number ?? "" });
+          setStoreForm({ store_name: s.store_name, description: s.description ?? "", city: s.city, area: s.area ?? "", contact_phone: contactData?.contact_phone ?? "", whatsapp_number: contactData?.whatsapp_number ?? "" });
+        }
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Could not load your seller workspace.");
+      } finally { if (active) setLoading(false); }
+    }
+    loadWorkspace();
+    return () => { active = false; };
+  }, [user]);
+
+  async function saveStore(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !supabase) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      let saved = store;
+      if (!saved) {
+        const { data, error: createError } = await supabase.from("seller_stores").insert({
+          owner_id: user.id, store_name: storeForm.store_name.trim(), description: storeForm.description.trim() || null,
+          city: storeForm.city.trim(), area: storeForm.area.trim() || null,
+        }).select("id,store_name,description,city,area,verification_status,verification_level,is_open").single();
+        if (createError) throw createError;
+        saved = data as Store;
+        setStore(saved);
+      } else {
+        const { error: updateError } = await supabase.from("seller_stores").update({
+          store_name: storeForm.store_name.trim(), description: storeForm.description.trim() || null,
+          city: storeForm.city.trim(), area: storeForm.area.trim() || null,
+        }).eq("id", saved.id);
+        if (updateError) throw updateError;
+      }
+      const { error: contactError } = await supabase.from("seller_store_contacts").upsert({
+        store_id: saved.id, contact_phone: storeForm.contact_phone.trim() || null,
+        whatsapp_number: storeForm.whatsapp_number.trim() || null,
+      }, { onConflict: "store_id" });
+      if (contactError) throw contactError;
+      setContacts({ contact_phone: storeForm.contact_phone, whatsapp_number: storeForm.whatsapp_number });
+      setMessage("Your store details have been saved. Verification remains subject to EZPREZZ review.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Your store details could not be saved.");
+    } finally { setBusy(false); }
+  }
+
+  async function createListing(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !store || !supabase) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const { error: insertError } = await supabase.from("listings").insert({
+        seller_store_id: store.id, product_id: listingForm.product_id,
+        variant_label: listingForm.variant_label.trim() || null, item_condition: listingForm.item_condition,
+        asking_price: Number(listingForm.asking_price), quantity: Number(listingForm.quantity),
+        city: listingForm.city.trim(), area: listingForm.area.trim() || null,
+        notes: listingForm.notes.trim() || null, moderation_status: "review_required",
+      });
+      if (insertError) throw insertError;
+      setListingForm({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: store.city, area: store.area ?? "", notes: "" });
+      setMessage("Listing submitted. It will remain private until store verification and listing review are complete.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Listing could not be submitted.");
+    } finally { setBusy(false); }
+  }
+
+  async function requestProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user || !supabase) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const { error: requestError } = await supabase.from("product_requests").insert({
+        requested_by: user.id, requested_name: requestForm.requested_name.trim(),
+        brand: requestForm.brand.trim() || null, model: requestForm.model.trim() || null,
+        product_type: requestForm.product_type, category_id: requestForm.category_id || null,
+        compatibility_notes: requestForm.compatibility_notes.trim() || null,
+        request_status: "pending",
+      });
+      if (requestError) throw requestError;
+      setRequestForm({ requested_name: "", brand: "", model: "", product_type: "finished_product", category_id: "", compatibility_notes: "" });
+      setMessage("Product request submitted for catalogue review. You can create a listing after it is accepted.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Product request could not be submitted.");
+    } finally { setBusy(false); }
+  }
+
+  if (!user) return <div className="empty">Sign in with your EZPREZZ account to register your store, manage listings and request products for the catalogue. Use the Sign in button at the top of the page.</div>;
+  if (loading) return <div className="empty">Loading your seller workspace…</div>;
+
+  return <div className="seller-workspace">
+    {error && <p className="account-error" role="alert">{error}</p>}
+    {message && <p className="seller-success" role="status">{message}</p>}
+    <section className="formcard">
+      <div className="eyebrow">SELLER PROFILE</div>
+      <h3>{store ? "Your store" : "Register your store"}</h3>
+      {store && <p className="store-status">Verification: <b>{store.verification_status.replaceAll("_", " ")}</b> · Level: {store.verification_level.replaceAll("_", " ")}</p>}
+      <form onSubmit={saveStore}>
+        <div className="formgrid">
+          <label>Store name<input required maxLength={100} value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} placeholder="Your shop or business name" /></label>
+          <label>City<input required maxLength={80} value={storeForm.city} onChange={e => setStoreForm({ ...storeForm, city: e.target.value })} /></label>
+          <label>Area / neighbourhood<input maxLength={100} value={storeForm.area} onChange={e => setStoreForm({ ...storeForm, area: e.target.value })} placeholder="e.g. Mile 1" /></label>
+          <label>Phone number<input type="tel" value={storeForm.contact_phone} onChange={e => setStoreForm({ ...storeForm, contact_phone: e.target.value })} placeholder="Your business phone" /></label>
+          <label>WhatsApp number<input type="tel" value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} placeholder="Include country code if possible" /></label>
+          <label>Store description<input maxLength={500} value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} placeholder="What do you sell or specialise in?" /></label>
+        </div>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Saving…" : store ? "Save store details" : "Register store"}</button>
+      </form>
+    </section>
+
+    {store && <section className="formcard">
+      <div className="eyebrow">YOUR INVENTORY</div><h3>Create a listing</h3>
+      {catalogue.length ? <form onSubmit={createListing}>
+        <div className="formgrid">
+          <label>Catalogue product<select required value={listingForm.product_id} onChange={e => setListingForm({ ...listingForm, product_id: e.target.value })}><option value="">Choose a product</option>{catalogue.map(p => <option key={p.id} value={p.id}>{[p.brand, p.name, p.model].filter(Boolean).join(" ")}</option>)}</select></label>
+          <label>Variant / specifications<input value={listingForm.variant_label} onChange={e => setListingForm({ ...listingForm, variant_label: e.target.value })} placeholder="e.g. 8GB / 256GB" /></label>
+          <label>Condition<select value={listingForm.item_condition} onChange={e => setListingForm({ ...listingForm, item_condition: e.target.value })}>{conditions.map(v => <option key={v} value={v}>{v.replaceAll("_", " ")}</option>)}</select></label>
+          <label>Asking price (NGN)<input required type="number" min="1" step="1" value={listingForm.asking_price} onChange={e => setListingForm({ ...listingForm, asking_price: e.target.value })} /></label>
+          <label>Quantity<input required type="number" min="0" step="1" value={listingForm.quantity} onChange={e => setListingForm({ ...listingForm, quantity: e.target.value })} /></label>
+          <label>City<input required value={listingForm.city} onChange={e => setListingForm({ ...listingForm, city: e.target.value })} /></label>
+          <label>Area<input value={listingForm.area} onChange={e => setListingForm({ ...listingForm, area: e.target.value })} /></label>
+          <label>Additional details<input value={listingForm.notes} onChange={e => setListingForm({ ...listingForm, notes: e.target.value })} /></label>
+        </div>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit listing for review"}</button>
+        <p className="muted">Your asking price is displayed separately from PriceCheck market ranges.</p>
+      </form> : <p className="muted">The catalogue currently has no active products. Request a missing product below; once the catalogue team accepts it, it will become available here.</p>}
+    </section>}
+
+    <section className="formcard">
+      <div className="eyebrow">CATALOGUE REQUEST</div><h3>Request a missing product</h3>
+      <form onSubmit={requestProduct}>
+        <div className="formgrid">
+          <label>Product name<input required maxLength={160} value={requestForm.requested_name} onChange={e => setRequestForm({ ...requestForm, requested_name: e.target.value })} placeholder="Product name" /></label>
+          <label>Brand<input value={requestForm.brand} onChange={e => setRequestForm({ ...requestForm, brand: e.target.value })} /></label>
+          <label>Model / part number<input value={requestForm.model} onChange={e => setRequestForm({ ...requestForm, model: e.target.value })} /></label>
+          <label>Product type<select value={requestForm.product_type} onChange={e => setRequestForm({ ...requestForm, product_type: e.target.value })}>{productTypes.map(v => <option key={v} value={v}>{v.replaceAll("_", " ")}</option>)}</select></label>
+          <label>Category<select value={requestForm.category_id} onChange={e => setRequestForm({ ...requestForm, category_id: e.target.value })}><option value="">Choose category (optional)</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+          <label>Compatibility / notes<input value={requestForm.compatibility_notes} onChange={e => setRequestForm({ ...requestForm, compatibility_notes: e.target.value })} /></label>
+        </div>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit product request"}</button>
+      </form>
+    </section>
+  </div>;
+}
