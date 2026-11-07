@@ -104,3 +104,16 @@ The current work has been committed to the existing working branch and verified 
 4. Admin workflows and first-admin bootstrap are tested securely.
 5. Responsive and accessibility QA is complete.
 6. The CEO reviews and explicitly approves release.
+
+## Admin moderation dashboard (development branch)
+
+- The existing Supabase project now has an `admin-dashboard` Edge Function with JWT verification enabled.
+- It verifies the caller with Supabase Auth, reads the caller's roles from `admin_user_roles` server-side, and returns only queues allowed by those roles.
+- Pending queues include stores, listings, PriceCheck observations and product requests; each queue is capped at 50 records per request.
+- The browser never reads `admin_user_roles` or pending moderation tables directly. Existing RLS restrictions remain unchanged.
+- The endpoint excludes private seller phone/WhatsApp data. Pending business verification evidence is exposed only as a five-minute signed URL to an authenticated administrator.
+- The frontend uses the existing review Edge Functions for decisions; these retain their own role checks, self-review restrictions and audit logging.
+- Business verification approval is disabled until a pending business evidence document is available.
+- Admin UI and endpoint are in the existing working branch. The Edge Function has been deployed to the existing Supabase project (version 2).
+
+Admin dashboard build and real administrator-session testing are still outstanding. No administrator roles have been granted as part of this work.
