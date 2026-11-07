@@ -267,3 +267,49 @@ footer small { color: #929b95; font-size: 10px; }
 
 .productvisual img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
 .productvisual.large img { object-fit: contain; }
+
+/* Design pass: consistent control sizing and clear interactive states. */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.productcard:focus-visible,
+.categorytile:focus-visible {
+  outline: 3px solid rgba(7, 61, 45, .32);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .account-trigger,
+  .contact-actions button,
+  .admin-filters button,
+  .admin-item-actions button,
+  .seller-listing-editable .seller-listing-meta button,
+  .seller-edit-form button {
+    min-height: 44px;
+  }
+
+  .formgrid input,
+  .formgrid select,
+  .seller-edit-form input,
+  .seller-edit-form select,
+  .admin-item-actions > input,
+  .admin-item-actions > select {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .admin-filters {
+    margin-right: -2px;
+    padding: 2px 2px 8px;
+    scrollbar-width: thin;
+  }
+
+  .seller-listing-editable .seller-listing-meta {
+    align-items: flex-start;
+  }
+}
