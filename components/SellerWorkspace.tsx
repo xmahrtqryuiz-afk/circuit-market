@@ -47,7 +47,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           setStoreForm({ store_name: s.store_name, description: s.description ?? "", city: s.city, area: s.area ?? "", contact_phone: contactData?.contact_phone ?? "", whatsapp_number: contactData?.whatsapp_number ?? "" });
           const { data: listingData, error: listingError } = await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label,is_active,moderation_status,created_at").eq("seller_store_id", s.id).order("created_at", { ascending: false });
           if (listingError) throw listingError;
-          const productNames = new Map((productsResult.data ?? []).map(p => [p.id, [p.brand, p.name, p.model].filter(Boolean).join(" ")]));
+          const productNames = new Map((productsResult.data ?? []).map(p => [p.id, [p.brand, p.name, p.model].filter(Boolean).join(" ")] as const));
           if (!active) return;
           setOwnListings((listingData ?? []).map(row => ({ ...row, product_name: productNames.get(row.product_id) ?? "Catalogue product" })) as SellerListing[]);
         }
