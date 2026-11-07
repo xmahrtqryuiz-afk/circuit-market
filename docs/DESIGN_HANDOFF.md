@@ -41,7 +41,7 @@ The working branch already contains the main workflow components:
 - `app/page.tsx`: public marketplace, search/category filtering, published PriceCheck, account entry, seller workspace, admin entry and secure seller-contact unlock.
 - `app/globals.css`: shared visual system and responsive component styling.
 
-The branch is 37 commits ahead of `main` and not behind at the time of review. The development branch includes functional and integration work; it must not be treated as a visual-only prototype. Review changes carefully and coordinate before editing overlapping files.
+The branch contains substantial application and integration work beyond the design layer. At the latest comparison in this review it is ahead of `main` and not behind. The development branch must not be treated as a visual-only prototype. Review changes carefully and coordinate before editing overlapping files.
 
 ## Design work just applied
 
@@ -56,6 +56,19 @@ Commit: `65b12956d38437cace75d70ef66651dc34e3b125`
 - Improved horizontal admin filter scrolling on small screens.
 
 No React logic, database queries, Supabase configuration, RLS, Edge Functions, authentication or business rules were changed.
+
+## Additional design pass
+
+File: `app/globals.css`
+
+Commit: `af6ebe3777edf0ce23aa3f8c84d672ba938173fa`
+
+- Improved product discovery card consistency, image framing and product-name hierarchy.
+- Applied tabular numerals to seller asking prices for easier scanning.
+- Refined PriceCheck range cards with a restrained accent, clearer product/evidence metadata and stronger range/median hierarchy.
+- Adjusted the PriceCheck range layout for narrow mobile screens.
+
+This is CSS-only. It does not alter product data, price calculations, published-range eligibility, queries, or any backend contract.
 
 ## Chika review requested
 
