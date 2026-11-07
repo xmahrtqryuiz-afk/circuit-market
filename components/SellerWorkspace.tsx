@@ -7,7 +7,8 @@ import { supabase } from "../lib/supabase";
 type Category = { id: string; name: string };
 type Store = { id: string; store_name: string; description: string | null; city: string; area: string | null; verification_status: string; verification_level: string; is_open: boolean };
 type CatalogueProduct = { id: string; name: string; brand: string | null; model: string | null; category_id: string };
-type SellerListing = { id: string; product_id: string; product_name: string; asking_price: number; item_condition: string; variant_label: string | null; is_active: boolean; moderation_status: string; created_at: string };
+type SellerListing = { id: string; product_id: string; product_name: string; asking_price: number; item_condition: string; variant_label: string | null; quantity: number; city: string; area: string | null; notes: string | null; is_active: boolean; moderation_status: string; created_at: string };
+type ProductRequest = { id: string; requested_name: string; brand: string | null; model: string | null; request_status: string; created_at: string };
 
 const conditions = ["new", "used", "refurbished", "new_aftermarket", "used_salvaged"];
 const productTypes = ["finished_product", "spare_part", "component", "tool", "accessory"];
@@ -15,6 +16,9 @@ const productTypes = ["finished_product", "spare_part", "component", "tool", "ac
 export default function SellerWorkspace({ user, categories }: { user: User | null; categories: Category[] }) {
   const [store, setStore] = useState<Store | null>(null);
   const [ownListings, setOwnListings] = useState<SellerListing[]>([]);
+  const [ownRequests, setOwnRequests] = useState<ProductRequest[]>([]);
+  const [editingId, setEditingId] = useState("");
+  const [editForm, setEditForm] = useState({ variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "", area: "", notes: "" });
   const [catalogue, setCatalogue] = useState<CatalogueProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -29,7 +33,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   useEffect(() => {
     let active = true;
     async function loadWorkspace() {
-      if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); return; }
+      if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); setOwnRequests([]); return; }
       setLoading(true); setError("");
       try {
         const [storeResult, productsResult] = await Promise.all([
@@ -47,11 +51,16 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           if (contactError) throw contactError;
           if (!active) return;
           setStoreForm({ store_name: s.store_name, description: s.description ?? "", city: s.city, area: s.area ?? "", contact_phone: contactData?.contact_phone ?? "", whatsapp_number: contactData?.whatsapp_number ?? "" });
-          const { data: listingData, error: listingError } = await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label,is_active,moderation_status,created_at").eq("seller_store_id", s.id).order("created_at", { ascending: false });
-          if (listingError) throw listingError;
+          const [listingResult, requestResult] = await Promise.all([
+            supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label,quantity,city,area,notes,is_active,moderation_status,created_at").eq("seller_store_id", s.id).order("created_at", { ascending: false }),
+            supabase.from("product_requests").select("id,requested_name,brand,model,request_status,created_at").eq("requested_by", user.id).order("created_at", { ascending: false }).limit(20),
+          ]);
+          if (listingResult.error) throw listingResult.error;
+          if (requestResult.error) throw requestResult.error;
           const productNames = new Map((productsResult.data ?? []).map(p => [p.id, [p.brand, p.name, p.model].filter(Boolean).join(" ")] as const));
           if (!active) return;
-          setOwnListings((listingData ?? []).map(row => ({ ...row, product_name: productNames.get(row.product_id) ?? "Catalogue product" })) as SellerListing[]);
+          setOwnListings((listingResult.data ?? []).map(row => ({ ...row, product_name: productNames.get(row.product_id) ?? "Catalogue product" })) as SellerListing[]);
+          setOwnRequests((requestResult.data ?? []) as ProductRequest[]);
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Could not load your seller workspace.");
@@ -138,6 +147,37 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     } finally { setBusy(false); }
   }
 
+  function beginEdit(item: SellerListing) {
+    setEditingId(item.id);
+    setEditForm({ variant_label: item.variant_label ?? "", item_condition: item.item_condition, asking_price: String(item.asking_price), quantity: String(item.quantity), city: item.city, area: item.area ?? "", notes: item.notes ?? "" });
+  }
+
+  async function saveListingEdits(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !editingId) return;
+    setBusy(true); setError(""); setMessage("");
+    const { error: updateError } = await supabase.from("listings").update({
+      variant_label: editForm.variant_label.trim() || null, item_condition: editForm.item_condition,
+      asking_price: Number(editForm.asking_price), quantity: Number(editForm.quantity),
+      city: editForm.city.trim(), area: editForm.area.trim() || null, notes: editForm.notes.trim() || null,
+    }).eq("id", editingId);
+    if (updateError) setError(updateError.message);
+    else {
+      setOwnListings(current => current.map(item => item.id === editingId ? { ...item, ...editForm, asking_price: Number(editForm.asking_price), quantity: Number(editForm.quantity), variant_label: editForm.variant_label.trim() || null, area: editForm.area.trim() || null, notes: editForm.notes.trim() || null } : item));
+      setEditingId(""); setMessage("Listing details updated. Any required re-review remains subject to moderation.");
+    }
+    setBusy(false);
+  }
+
+  async function deactivateListing(id: string) {
+    if (!supabase || !window.confirm("Deactivate this listing? It will no longer appear in the public marketplace.")) return;
+    setBusy(true); setError(""); setMessage("");
+    const { error: updateError } = await supabase.from("listings").update({ is_active: false }).eq("id", id);
+    if (updateError) setError(updateError.message);
+    else { setOwnListings(current => current.map(item => item.id === id ? { ...item, is_active: false } : item)); setMessage("Listing deactivated."); }
+    setBusy(false);
+  }
+
   async function requestProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !supabase) return;
@@ -152,6 +192,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       });
       if (requestError) throw requestError;
       setRequestForm({ requested_name: "", brand: "", model: "", product_type: "finished_product", category_id: "", compatibility_notes: "" });
+      setOwnRequests(current => [{ id: crypto.randomUUID(), requested_name: requestForm.requested_name.trim(), brand: requestForm.brand.trim() || null, model: requestForm.model.trim() || null, request_status: "pending", created_at: new Date().toISOString() }, ...current]);
       setMessage("Product request submitted for catalogue review. You can create a listing after it is accepted.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Product request could not be submitted.");
@@ -203,8 +244,10 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
 
     {store && <section className="formcard seller-listings">
       <div className="eyebrow">INVENTORY OVERVIEW</div><h3>Your listings <span className="count-pill">{ownListings.length}</span></h3>
-      {ownListings.length ? <div className="seller-listing-list">{ownListings.map(item => <article className="seller-listing-row" key={item.id}><div><b>{item.product_name}</b><small>{item.variant_label ? `${item.variant_label} · ` : ""}{item.item_condition.replaceAll("_", " ")}</small></div><div className="seller-listing-meta"><strong>₦{Number(item.asking_price).toLocaleString("en-NG")}</strong><span className={`listing-status status-${item.moderation_status}`}>{item.moderation_status.replaceAll("_", " ")}</span></div></article>)}</div> : <p className="muted">You have not submitted any listings yet.</p>}
+      {ownListings.length ? <div className="seller-listing-list">{ownListings.map(item => <article className="seller-listing-row seller-listing-editable" key={item.id}><div><b>{item.product_name}</b><small>{item.variant_label ? item.variant_label + " · " : ""}{item.item_condition.replaceAll("_", " ")}</small><span className={"listing-status " + (item.is_active ? "status-" + item.moderation_status : "")}>{item.is_active ? item.moderation_status.replaceAll("_", " ") : "deactivated"}</span></div><div className="seller-listing-meta"><strong>₦{Number(item.asking_price).toLocaleString("en-NG")}</strong><div><button className="secondary-action" disabled={busy} onClick={() => beginEdit(item)}>Edit</button>{item.is_active && <button className="secondary-action" disabled={busy} onClick={() => deactivateListing(item.id)}>Deactivate</button>}</div></div>{editingId === item.id && <form className="seller-edit-form" onSubmit={saveListingEdits}><label>Variant<input value={editForm.variant_label} onChange={e => setEditForm({ ...editForm, variant_label: e.target.value })}/></label><label>Condition<select value={editForm.item_condition} onChange={e => setEditForm({ ...editForm, item_condition: e.target.value })}>{conditions.map(v => <option key={v} value={v}>{v.replaceAll("_", " ")}</option>)}</select></label><label>Price (NGN)<input type="number" min="1" step="1" required value={editForm.asking_price} onChange={e => setEditForm({ ...editForm, asking_price: e.target.value })}/></label><label>Quantity<input type="number" min="0" step="1" required value={editForm.quantity} onChange={e => setEditForm({ ...editForm, quantity: e.target.value })}/></label><label>City<input required value={editForm.city} onChange={e => setEditForm({ ...editForm, city: e.target.value })}/></label><label>Area<input value={editForm.area} onChange={e => setEditForm({ ...editForm, area: e.target.value })}/></label><label>Details<input value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })}/></label><div><button className="primary" type="submit" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button><button className="secondary-action" type="button" onClick={() => setEditingId("")}>Cancel</button></div></form>}</article>)}</div> : <p className="muted">You have not submitted any listings yet.</p>}
     </section>}
+
+    {ownRequests.length > 0 && <section className="formcard seller-listings"><div className="eyebrow">REQUEST TRACKER</div><h3>Your product requests <span className="count-pill">{ownRequests.length}</span></h3><div className="seller-listing-list">{ownRequests.map(request => <article className="seller-listing-row" key={request.id}><div><b>{[request.brand, request.requested_name, request.model].filter(Boolean).join(" ")}</b><small>{new Date(request.created_at).toLocaleDateString("en-NG")}</small></div><span className={"listing-status status-" + request.request_status}>{request.request_status.replaceAll("_", " ")}</span></article>)}</div></section>}
 
     <section className="formcard">
       <div className="eyebrow">CATALOGUE REQUEST</div><h3>Request a missing product</h3>
