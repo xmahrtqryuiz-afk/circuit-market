@@ -11,6 +11,7 @@ export default function AccountAccess({ onAuthChange }: Props) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
+  const [city, setCity] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,7 +40,7 @@ export default function AccountAccess({ onAuthChange }: Props) {
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { display_name: name.trim() } },
+          options: { data: { display_name: name.trim(), city: city.trim() } },
         });
         if (authError) throw authError;
         if (data.session) {
@@ -89,7 +90,10 @@ export default function AccountAccess({ onAuthChange }: Props) {
           <p>Use one account to buy, sell and contribute price observations on EZPREZZ.</p>
           <form onSubmit={submit}>
             <div className="formgrid account-form">
-              {mode === "signup" && <label>Your name<input autoComplete="name" required value={name} onChange={e => setName(e.target.value)} placeholder="Full name" /></label>}
+              {mode === "signup" && <>
+                <label>Your name<input autoComplete="name" required value={name} onChange={e => setName(e.target.value)} placeholder="Full name" /></label>
+                <label>City<input autoComplete="address-level2" required value={city} onChange={e => setCity(e.target.value)} placeholder="Your city" /></label>
+              </>}
               <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></label>
               <label>Password<input type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={8} required value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" /></label>
             </div>
