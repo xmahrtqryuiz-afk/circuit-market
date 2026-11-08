@@ -70,6 +70,31 @@ Commit: `af6ebe3777edf0ce23aa3f8c84d672ba938173fa`
 
 This is CSS-only. It does not alter product data, price calculations, published-range eligibility, queries, or any backend contract.
 
+## Review update — 2026-11-08
+
+The latest inspected branch head before this design pass was `08227d578f557c90e76db635fd83cf2ceb2a00bb`, 50 commits ahead of `main` and 0 behind. The branch now also contains technical follow-up commits covering catalogue error messaging, moderation queue queries, signup/profile handling, least-privilege catalogue grants, and migration filename cleanup. These changes are outside the design scope and should receive Chika's technical validation.
+
+No open pull request, submitted PR review, inline review thread, or repository issue containing Chika's design review feedback was found during this check. Commit history shows technical follow-up work, but it does not substitute for an explicit review of the CSS/UI changes.
+
+### Additional discovery-card improvement
+
+Files: `app/page.tsx`, `app/globals.css`
+
+- Added a condition badge to each public product card, using the listing's existing `item_condition` value already mapped into the product view.
+- Styled the badge within the existing EZPREZZ green palette.
+- No catalogue records, product values, filtering, pricing, authentication, or backend contracts were changed.
+
+Commits:
+- `353e6e4261be6b9f43b190fb373945d8a5100052`
+- `66632478c51b680dc8afcd6614b2099c067a33c8`
+
+### Current review gaps
+
+- Chika's explicit CSS/component review is still pending.
+- Build, lint, responsive browser QA, and real-session interaction checks remain unverified.
+- Product cards still need a later pass for stronger brand/model/specification hierarchy where the existing catalogue fields support it.
+- PriceCheck currently exposes condition, geographic level and reviewed-observation count, but its evidence context can be made easier to compare; retain the current published-snapshot-only rule and do not invent sample data.
+
 ## Chika review requested
 
 1. Check the CSS-only commit for selector collisions with current component styles and confirm it does not affect desktop layout.
