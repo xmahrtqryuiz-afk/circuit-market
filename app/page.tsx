@@ -136,5 +136,5 @@ export default function Home() {
 
 function ProductGrid({ products, onSelect }: { products: Product[]; onSelect: (p: Product) => void }) {
   if (!products.length) return <div className="empty">No approved listings are available yet. Try another category later.</div>;
-  return <div className="productgrid">{products.map(p=><button className="productcard" key={p.id} onClick={()=>onSelect(p)}><div className="productvisual">{p.imageUrl ? <img src={p.imageUrl} alt={p.imageAlt} loading="lazy" /> : "▣"}</div><div className="productmeta">{p.category} <span>·</span> {p.area || p.city}</div><b className="productname">{p.name}</b><small>{p.variant}</small><strong>{money(p.price)}</strong><span className="tag asking">Seller asking price</span></button>)}</div>;
+  return <div className="productgrid">{products.map(p=><button className="productcard" key={p.id} onClick={()=>onSelect(p)}><div className="productvisual">{p.imageUrl ? <img src={p.imageUrl} alt={p.imageAlt} loading="lazy" /> : "▣"}</div><div className="productmeta">{p.category} <span>·</span> {p.area || p.city}</div><b className="productname">{p.name}</b><small>{p.variant}</small><span className="tag condition">Condition · {p.condition.replaceAll("_", " ")}</span><strong>{money(p.price)}</strong><span className="tag asking">Seller asking price</span></button>)}</div>;
 }
