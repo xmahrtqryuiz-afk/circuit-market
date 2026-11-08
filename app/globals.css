@@ -430,3 +430,12 @@ textarea:disabled {
     overflow-wrap: anywhere;
   }
 }
+
+.productcard .condition {
+  align-self: flex-start;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 9px;
+  line-height: 1.35;
+  text-transform: capitalize;
+}
