@@ -182,6 +182,7 @@ as $$
 declare
   v_request public.product_requests%rowtype;
   v_product_id uuid;
+  v_category_id uuid;
   v_slug text;
   v_base_slug text;
 begin
@@ -215,23 +216,24 @@ begin
     return jsonb_build_object('success', true, 'request_status', 'rejected');
   end if;
 
-  if p_category_id is null then
+  v_category_id := coalesce(p_category_id, v_request.category_id);
+  if v_category_id is null then
     raise exception 'Choose a catalogue category before accepting this request' using errcode = '22023';
   end if;
-  if not exists (select 1 from public.categories where id = p_category_id and is_active = true) then
+  if not exists (select 1 from public.categories where id = v_category_id and is_active = true) then
     raise exception 'The selected category is not active' using errcode = '22023';
   end if;
 
   select id into v_product_id
   from public.products
-  where category_id = p_category_id
+  where category_id = v_category_id
     and lower(name) = lower(v_request.requested_name)
     and lower(coalesce(brand, '')) = lower(coalesce(v_request.brand, ''))
     and lower(coalesce(model, '')) = lower(coalesce(v_request.model, ''))
   limit 1;
 
   if v_product_id is not null then
-    update public.product_requests set request_status = 'duplicate', category_id = p_category_id
+    update public.product_requests set request_status = 'duplicate', category_id = v_category_id
     where id = p_request_id;
     insert into public.audit_logs(actor_id, action, target_type, target_id, metadata)
     values (
@@ -254,12 +256,12 @@ begin
   insert into public.products (
     category_id, name, brand, model, slug, product_type, description, attributes, is_active
   ) values (
-    p_category_id, v_request.requested_name, v_request.brand, v_request.model,
+    v_category_id, v_request.requested_name, v_request.brand, v_request.model,
     v_slug, v_request.product_type, null, '{}'::jsonb, true
   ) returning id into v_product_id;
 
   update public.product_requests
-  set request_status = 'accepted', category_id = p_category_id
+  set request_status = 'accepted', category_id = v_category_id
   where id = p_request_id;
 
   insert into public.audit_logs(actor_id, action, target_type, target_id, metadata)
