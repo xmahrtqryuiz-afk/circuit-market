@@ -17,7 +17,7 @@ declare
   v_count bigint;
 begin
   if p_buyer_id is null or p_store_id is null or p_listing_id is null
-     or p_channel not in ('phone', 'whatsapp') then
+     or p_channel is null or p_channel not in ('phone', 'whatsapp') then
     return jsonb_build_object('status', 400, 'error', 'A valid store, listing and contact channel are required');
   end if;
 
@@ -87,7 +87,7 @@ declare
   v_status text;
   v_level text;
 begin
-  if p_decision not in ('approve_business', 'reject', 'suspend') then
+  if p_decision is null or p_decision not in ('approve_business', 'reject', 'suspend') then
     raise exception 'Invalid seller review decision' using errcode = '22023';
   end if;
 
@@ -186,7 +186,7 @@ declare
   v_slug text;
   v_base_slug text;
 begin
-  if p_decision not in ('accept', 'reject') then
+  if p_decision is null or p_decision not in ('accept', 'reject') then
     raise exception 'Invalid product request decision' using errcode = '22023';
   end if;
 
@@ -223,6 +223,11 @@ begin
   if not exists (select 1 from public.categories where id = v_category_id and is_active = true) then
     raise exception 'The selected category is not active' using errcode = '22023';
   end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(
+    concat_ws('|', v_category_id::text, lower(v_request.requested_name), lower(coalesce(v_request.brand, '')), lower(coalesce(v_request.model, ''))),
+    1
+  ));
 
   select id into v_product_id
   from public.products
