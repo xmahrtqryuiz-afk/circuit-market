@@ -126,6 +126,7 @@ begin
       and verification_type = 'business'
       and verification_status = 'pending'
       and evidence_storage_path is not null
+      and evidence_mime_type in ('image/jpeg','image/png','image/webp','application/pdf')
     for update;
     if not found then
       raise exception 'Business verification requires pending evidence' using errcode = 'P0001';
