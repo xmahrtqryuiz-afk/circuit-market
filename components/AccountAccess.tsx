@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -17,6 +17,47 @@ export default function AccountAccess({ onAuthChange }: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+
+    function handleDialogKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter(element => element.getAttribute("aria-hidden") !== "true");
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    window.addEventListener("keydown", handleDialogKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleDialogKeyDown);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -81,8 +122,8 @@ export default function AccountAccess({ onAuthChange }: Props) {
     </div>
     {message && !open && <span className="account-status" role="status">{message}</span>}
     {open && <div className="modalback" onClick={() => setOpen(false)}>
-      <section className="modal account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title" onClick={event => event.stopPropagation()}>
-        <button className="close" aria-label="Close account dialog" onClick={() => setOpen(false)}>×</button>
+      <section ref={dialogRef} className="modal account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title" tabIndex={-1} onClick={event => event.stopPropagation()}>
+        <button ref={closeButtonRef} className="close" type="button" aria-label="Close account dialog" onClick={() => setOpen(false)}>×</button>
         {user ? <>
           <div className="eyebrow">YOUR EZPREZZ ACCOUNT</div>
           <h2 id="account-title">Welcome back</h2>
