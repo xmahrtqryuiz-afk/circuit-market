@@ -52,16 +52,21 @@ export default function AdminDashboard({ user, active, onAccessChange, categorie
   async function review(functionName: string, body: Record<string, unknown>, id: string, successText: string) {
     if (!supabase) return;
     setBusyId(id); setError(""); setNotice("");
-    const { data, error: invokeError } = await supabase.functions.invoke(functionName, { body });
-    if (invokeError || data?.error || data?.success === false) {
-      let detail = data?.error || invokeError?.message || "The review action could not be completed.";
-      if (invokeError) { try { const payload = await (invokeError as any).context?.json?.(); if (payload?.error) detail = payload.error; } catch {} }
-      setError(detail);
-    } else {
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke(functionName, { body });
+      if (invokeError || data?.error || data?.success === false) {
+        let detail = data?.error || invokeError?.message || "The review action could not be completed.";
+        if (invokeError) { try { const payload = await (invokeError as any).context?.json?.(); if (payload?.error) detail = payload.error; } catch {} }
+        setError(detail);
+        return;
+      }
       setNotice(successText);
       await load(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The review action could not be completed.");
+    } finally {
+      setBusyId("");
     }
-    setBusyId("");
   }
 
   const total = queues.stores.length + queues.listings.length + queues.priceObservations.length + queues.productRequests.length + queues.reports.length + queues.compatibilities.length;
