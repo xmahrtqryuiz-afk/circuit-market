@@ -58,37 +58,17 @@ Deno.serve(async (req: Request) => {
   const overrideFlag = body.override_price_flag === true;
   const reason = typeof body.reason === "string" ? body.reason.slice(0,1000) : null;
 
-  const { data: listing, error: listingError } = await admin.from("listings")
-    .select("id,seller_store_id,moderation_status,price_flag_status")
-    .eq("id",listingId).maybeSingle();
-  if (listingError || !listing) return json({ error: "Listing not found" }, 404);
-  const { data: store, error: storeError } = await admin.from("seller_stores")
-    .select("owner_id").eq("id",listing.seller_store_id).maybeSingle();
-  if (storeError || !store) return json({ error: "Seller store not found" }, 404);
-  if (store.owner_id === user.id) return json({ error: "You cannot review your own listing" }, 403);
-  if (decision === "approved" && listing.price_flag_status === "review_required" && !overrideFlag) {
-    return json({ error: "This listing has a price or duplicate flag. Explicitly review and clear it before approval." }, 409);
-  }
-
-  const update: Record<string,unknown> = { moderation_status:decision };
-  if (decision === "rejected" || decision === "suspended") update.is_active = false;
-  if (decision === "approved" && overrideFlag) {
-    update.price_flag_status = "cleared";
-    update.price_flag_reason = null;
-  }
-  const { data: updated, error: updateError } = await admin.from("listings")
-    .update(update).eq("id",listingId).select("id,moderation_status,price_flag_status").maybeSingle();
-  if (updateError) return json({ error: "Listing moderation could not be saved" }, 500);
-  if (!updated) return json({ error: "Listing moderation was not updated" }, 409);
-
-  await admin.from("moderation_events").insert({
-    actor_id:user.id,target_type:"listing",target_id:listingId,
-    action:decision,reason,metadata:{price_flag_override:overrideFlag},
+  const { data: result, error: reviewError } = await admin.rpc("admin_review_listing_atomic", {
+    p_actor_id: user.id,
+    p_listing_id: listingId,
+    p_decision: decision,
+    p_override_price_flag: overrideFlag,
+    p_reason: reason,
   });
-  await admin.from("audit_logs").insert({
-    actor_id:user.id,action:"listing_"+decision,target_type:"listing",target_id:listingId,
-    metadata:{price_flag_override:overrideFlag},
-  });
-  return json({ success:true, listing_id:listingId, moderation_status:updated.moderation_status,
-    price_flag_status:updated.price_flag_status });
+  if (reviewError) {
+    const status = reviewError.code === "42501" ? 403 : reviewError.code === "P0002" ? 404
+      : reviewError.code === "P0001" ? 409 : reviewError.code === "22023" ? 422 : 500;
+    return json({ error: reviewError.message || "Listing moderation could not be saved" }, status);
+  }
+  return json(result);
 });
