@@ -73,6 +73,14 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   async function saveStore(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !supabase) return;
+    if (verificationFile) {
+      const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      if (!allowed.includes(verificationFile.type) || verificationFile.size > 10 * 1024 * 1024) {
+        setError("Verification files must be JPG, PNG, WebP or PDF and no larger than 10 MB.");
+        setMessage("");
+        return;
+      }
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       let saved = store;
@@ -97,8 +105,6 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       }, { onConflict: "store_id" });
       if (contactError) throw contactError;
       if (verificationFile) {
-        const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-        if (!allowed.includes(verificationFile.type) || verificationFile.size > 10 * 1024 * 1024) throw new Error("Verification files must be JPG, PNG, WebP or PDF and no larger than 10 MB.");
         const extension = verificationFile.name.split(".").pop()?.toLowerCase() || "file";
         const path = user.id + "/" + saved.id + "/business/" + crypto.randomUUID() + "." + extension;
         const { error: uploadError } = await supabase.storage.from("verification-documents").upload(path, verificationFile, { contentType: verificationFile.type, upsert: false });
