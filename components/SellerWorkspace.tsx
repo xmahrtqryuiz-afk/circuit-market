@@ -116,6 +116,13 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   async function createListing(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !store || !supabase) return;
+    const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+    const invalidImage = listingImages.find(file => !allowedImageTypes.includes(file.type) || file.size > 5 * 1024 * 1024);
+    if (invalidImage) {
+      setError("Listing photos must be JPG, PNG or WebP and no larger than 5 MB each.");
+      setMessage("");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       const { data: createdListing, error: insertError } = await supabase.from("listings").insert({

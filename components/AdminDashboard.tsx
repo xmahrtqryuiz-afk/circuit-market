@@ -30,21 +30,27 @@ export default function AdminDashboard({ user, active, onAccessChange, categorie
     if (!user || !supabase) { setQueues(emptyQueues); setRoles([]); onAccessChange(false); return; }
     if (!quiet) setLoading(true);
     setError("");
-    const { data, error: invokeError } = await supabase.functions.invoke("admin-dashboard", { method: "GET" });
-    if (invokeError) {
-      let detail = invokeError.message;
-      try { const body = await (invokeError as any).context?.json?.(); if (body?.error) detail = body.error; } catch {}
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke("admin-dashboard", { method: "GET" });
+      if (invokeError) {
+        let detail = invokeError.message;
+        try { const body = await (invokeError as any).context?.json?.(); if (body?.error) detail = body.error; } catch {}
+        setQueues(emptyQueues); setRoles([]); onAccessChange(false);
+        setError(detail || "Administrator access could not be verified.");
+      } else if (data?.queues) {
+        setQueues(data.queues as Queues);
+        setRoles(Array.isArray(data.roles) ? data.roles : []);
+        onAccessChange(true);
+      } else {
+        setQueues(emptyQueues); setRoles([]); onAccessChange(false);
+        setError("The moderation service returned an unexpected response.");
+      }
+    } catch (err) {
       setQueues(emptyQueues); setRoles([]); onAccessChange(false);
-      setError(detail || "Administrator access could not be verified.");
-    } else if (data?.queues) {
-      setQueues(data.queues as Queues);
-      setRoles(Array.isArray(data.roles) ? data.roles : []);
-      onAccessChange(true);
-    } else {
-      setQueues(emptyQueues); setRoles([]); onAccessChange(false);
-      setError("The moderation service returned an unexpected response.");
+      setError(err instanceof Error ? err.message : "Administrator queues could not be loaded.");
+    } finally {
+      if (!quiet) setLoading(false);
     }
-    if (!quiet) setLoading(false);
   }, [user, onAccessChange]);
 
   useEffect(() => { load(); }, [load]);
