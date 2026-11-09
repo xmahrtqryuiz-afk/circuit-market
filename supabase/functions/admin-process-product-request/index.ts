@@ -52,72 +52,18 @@ Deno.serve(async (req: Request) => {
     return json({error:"A valid request and decision are required"},400);
   }
 
-  const {data:request,error:requestError} = await admin.from("product_requests")
-    .select("id,requested_by,requested_name,brand,model,product_type,category_id,request_status")
-    .eq("id",body.request_id).maybeSingle();
-  if (requestError || !request) return json({error:"Product request not found"},404);
-  if (request.requested_by===user.id) return json({error:"You cannot approve your own product request"},403);
-  if (request.request_status!=="pending") return json({error:"This product request has already been processed"},409);
-
-  if (body.decision==="reject") {
-    const {data:updated,error:updateError} = await admin.from("product_requests")
-      .update({request_status:"rejected"}).eq("id",request.id).eq("request_status","pending")
-      .select("id,request_status").maybeSingle();
-    if (updateError) return json({error:"Product request could not be rejected"},500);
-    if (!updated) return json({error:"Product request was processed by another administrator"},409);
-    await admin.from("audit_logs").insert({actor_id:user.id,action:"product_request_rejected",target_type:"product_request",target_id:request.id});
-    return json({success:true,request_status:"rejected"});
-  }
-
-  const categoryId = isUuid(body.category_id) ? body.category_id : request.category_id;
-  if (!categoryId) return json({error:"Choose a catalogue category before accepting this request"},422);
-  const {data:category,error:categoryError} = await admin.from("categories")
-    .select("id,is_active").eq("id",categoryId).maybeSingle();
-  if (categoryError || !category?.is_active) return json({error:"The selected category is not active"},422);
-
-  const {data:duplicates,error:duplicateError} = await admin.from("products")
-    .select("id,name,brand,model").eq("category_id",categoryId)
-    .ilike("name",request.requested_name).limit(5);
-  if (duplicateError) return json({error:"Catalogue duplicate check failed"},500);
-  const existing = (duplicates ?? []).find((p:any)=>
-    (p.brand ?? "").toLowerCase()===(request.brand ?? "").toLowerCase() &&
-    (p.model ?? "").toLowerCase()===(request.model ?? "").toLowerCase()
-  );
-  if (existing) {
-    const {data:updated,error:updateError} = await admin.from("product_requests")
-      .update({request_status:"duplicate"}).eq("id",request.id).eq("request_status","pending")
-      .select("id").maybeSingle();
-    if (updateError || !updated) return json({error:"Product request could not be marked duplicate"},409);
-    return json({success:true,request_status:"duplicate",existing_product_id:existing.id});
-  }
-
-  const baseSlug = slugify([request.brand,request.requested_name,request.model].filter(Boolean).join("-")) || "catalogue-product";
-  let slug = baseSlug;
-  const {data:slugMatch} = await admin.from("products").select("id").eq("slug",slug).maybeSingle();
-  if (slugMatch) slug = baseSlug + "-" + crypto.randomUUID().slice(0,8);
-
-  const {data:product,error:productError} = await admin.from("products").insert({
-    category_id:categoryId,
-    name:request.requested_name,
-    brand:request.brand,
-    model:request.model,
-    slug,
-    product_type:request.product_type,
-    description:null,
-    attributes:{},
-    is_active:true,
-  }).select("id").single();
-  if (productError || !product) return json({error:"Catalogue product could not be created"},500);
-
-  const {data:updated,error:updateError} = await admin.from("product_requests")
-    .update({request_status:"accepted",category_id:categoryId})
-    .eq("id",request.id).eq("request_status","pending")
-    .select("id").maybeSingle();
-  if (updateError || !updated) return json({error:"Product was created, but the request status could not be updated"},500);
-
-  await admin.from("audit_logs").insert({
-    actor_id:user.id,action:"catalogue_product_created",target_type:"product",target_id:product.id,
-    metadata:{product_request_id:request.id},
+  const { data: result, error: processError } = await admin.rpc("admin_process_product_request_atomic", {
+    p_actor_id: user.id,
+    p_request_id: body.request_id,
+    p_decision: String(body.decision),
+    p_category_id: isUuid(body.category_id) ? body.category_id : null,
   });
-  return json({success:true,request_status:"accepted",product_id:product.id});
+  if (processError) {
+    const status = processError.code === "42501" ? 403
+      : processError.code === "P0002" ? 404
+      : processError.code === "P0001" ? 409
+      : processError.code === "22023" ? 422 : 500;
+    return json({ error: processError.message || "Product request could not be processed" }, status);
+  }
+  return json(result);
 });
