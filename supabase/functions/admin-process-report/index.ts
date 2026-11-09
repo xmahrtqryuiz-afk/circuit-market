@@ -22,16 +22,17 @@ Deno.serve(async(req:Request)=>{
   let body:{report_id?:unknown;decision?:unknown;note?:unknown};
   try{body=await req.json();}catch{return json({error:"A valid JSON request is required"},400);}
   if(!isUuid(body.report_id)||!["reviewing","resolved","dismissed"].includes(String(body.decision)))return json({error:"A valid report and decision are required"},400);
-  const {data:report,error:reportError}=await admin.from("user_reports").select("id,reporter_id,report_status").eq("id",body.report_id).maybeSingle();
-  if(reportError||!report)return json({error:"Report not found"},404);
-  if(report.reporter_id===user.id)return json({error:"You cannot review your own report"},403);
-  if(report.report_status==="resolved"||report.report_status==="dismissed")return json({error:"This report has already been closed"},409);
-  const {data:updated,error:updateError}=await admin.from("user_reports").update({report_status:body.decision})
-    .eq("id",report.id).eq("report_status",report.report_status).select("id,report_status").maybeSingle();
-  if(updateError)return json({error:"Report status could not be saved"},500);
-  if(!updated)return json({error:"Report was updated by another administrator"},409);
   const note=typeof body.note==="string"?body.note.slice(0,1000):null;
-  await admin.from("moderation_events").insert({actor_id:user.id,target_type:"user_report",target_id:report.id,action:body.decision,reason:note});
-  await admin.from("audit_logs").insert({actor_id:user.id,action:"user_report_"+body.decision,target_type:"user_report",target_id:report.id});
-  return json({success:true,report_id:report.id,report_status:updated.report_status});
+  const { data: result, error: processError } = await admin.rpc("admin_process_report_atomic", {
+    p_actor_id: user.id,
+    p_report_id: body.report_id,
+    p_decision: String(body.decision),
+    p_note: note,
+  });
+  if (processError) {
+    const status = processError.code === "42501" ? 403 : processError.code === "P0002" ? 404
+      : processError.code === "P0001" ? 409 : processError.code === "22023" ? 422 : 500;
+    return json({ error: processError.message || "Report status could not be saved" }, status);
+  }
+  return json(result);
 });
