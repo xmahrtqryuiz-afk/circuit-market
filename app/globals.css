@@ -469,3 +469,19 @@ textarea:disabled {
 .search-empty b { display: block; margin-bottom: 5px; color: var(--ink); font: 800 16px Manrope, sans-serif; }
 .search-empty p { margin: 0 0 8px; }
 @media (max-width: 640px) { .filter-reset { min-height: 44px; } }
+
+@media (max-width: 640px) {
+  .filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-right: -17px;
+    padding: 2px 17px 9px 0;
+    scrollbar-width: thin;
+    scroll-padding-inline: 17px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filters button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
