@@ -46,37 +46,15 @@ Deno.serve(async (req: Request) => {
     return json({ error: "A valid store, listing and contact channel are required" }, 400);
   }
 
-  const { data: listing, error: listingError } = await admin
-    .from("listings").select("id,seller_store_id,is_active,moderation_status")
-    .eq("id", listingId).eq("seller_store_id", storeId).maybeSingle();
-  if (listingError || !listing || !listing.is_active || listing.moderation_status !== "approved") {
-    return json({ error: "This listing is not currently available for contact" }, 404);
-  }
-
-  const { data: store, error: storeError } = await admin
-    .from("seller_stores").select("id,owner_id,verification_status")
-    .eq("id", storeId).eq("verification_status", "verified").maybeSingle();
-  if (storeError || !store) return json({ error: "This seller is not currently contactable" }, 404);
-  if (store.owner_id === user.id) return json({ error: "You cannot unlock your own store contact" }, 403);
-
-  const { data: contact, error: contactError } = await admin
-    .from("seller_store_contacts").select("contact_phone,whatsapp_number")
-    .eq("store_id", storeId).maybeSingle();
-  if (contactError || !contact) return json({ error: "Seller contact details are not available yet" }, 404);
-  const value = channel === "phone" ? contact.contact_phone : contact.whatsapp_number;
-  if (!value) return json({ error: "This seller has not provided that contact method" }, 404);
-
-  const { count, error: rateError } = await admin
-    .from("seller_contact_requests").select("id", { count: "exact", head: true })
-    .eq("buyer_id", user.id)
-    .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-  if (rateError) return json({ error: "Contact request could not be checked" }, 500);
-  if ((count ?? 0) >= 40) return json({ error: "Daily contact request limit reached" }, 429);
-
-  const { error: requestError } = await admin.from("seller_contact_requests").insert({
-    buyer_id: user.id, store_id: storeId, listing_id: listingId, channel,
+  const { data: result, error: requestError } = await admin.rpc("record_seller_contact_request", {
+    p_buyer_id: user.id,
+    p_store_id: storeId,
+    p_listing_id: listingId,
+    p_channel: channel,
   });
   if (requestError) return json({ error: "Contact request could not be recorded" }, 500);
-
-  return json({ channel, contact: value, store_id: storeId, listing_id: listingId });
+  const status = Number(result?.status ?? 500);
+  if (status !== 200) return json({ error: result?.error ?? "Contact request could not be completed" }, status);
+  const { status: _status, ...payload } = result;
+  return json(payload);
 });
