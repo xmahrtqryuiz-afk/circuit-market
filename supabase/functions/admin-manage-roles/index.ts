@@ -26,22 +26,16 @@ Deno.serve(async(req:Request)=>{
     return json({error:"A valid user, administrator role and action are required"},400);
   }
   const targetId=body.user_id,role=String(body.role),action=String(body.action);
-  if(action==="revoke"&&role==="super_admin"){
-    const {count,error:countError}=await admin.from("admin_user_roles").select("id",{count:"exact",head:true})
-      .eq("role","super_admin");
-    if(countError)return json({error:"Administrator count could not be checked"},500);
-    if((count??0)<=1)return json({error:"The last super administrator cannot be removed"},409);
-  }
-  if(action==="grant"){
-    const {error}=await admin.from("admin_user_roles").insert({user_id:targetId,role,granted_by:user.id});
-    if(error&&error.code!=="23505")return json({error:"Administrator role could not be granted"},500);
-  }else{
-    const {error}=await admin.from("admin_user_roles").delete().eq("user_id",targetId).eq("role",role);
-    if(error)return json({error:"Administrator role could not be revoked"},500);
-  }
-  await admin.from("audit_logs").insert({
-    actor_id:user.id,action:"admin_role_"+action,target_type:"user",target_id:targetId,
-    metadata:{role},
+  const { data: result, error: roleError } = await admin.rpc("admin_manage_role_atomic", {
+    p_actor_id: user.id,
+    p_target_id: targetId,
+    p_role: role,
+    p_action: action,
   });
-  return json({success:true,user_id:targetId,role,action});
+  if (roleError) {
+    const status = roleError.code === "42501" ? 403 : roleError.code === "P0001" ? 409
+      : roleError.code === "22023" ? 422 : 500;
+    return json({ error: roleError.message || "Administrator role could not be changed" }, status);
+  }
+  return json(result);
 });
