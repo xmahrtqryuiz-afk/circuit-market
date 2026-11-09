@@ -43,6 +43,14 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !supabase) return;
+    if (evidenceFile) {
+      const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      if (!allowed.includes(evidenceFile.type) || evidenceFile.size > 10 * 1024 * 1024) {
+        setError("Evidence files must be JPG, PNG, WebP or PDF and no larger than 10 MB.");
+        setMessage("");
+        return;
+      }
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       const { data, error: insertError } = await supabase.from("price_observations").insert({
