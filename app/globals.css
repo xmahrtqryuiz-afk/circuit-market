@@ -439,3 +439,25 @@ textarea:disabled {
   line-height: 1.35;
   text-transform: capitalize;
 }
+
+
+/* Product identity hierarchy: catalogue identity, variant and seller price. */
+.productidentity { display:block; max-width:100%; overflow:hidden; color:var(--green); font-size:9px; font-weight:800; letter-spacing:.075em; line-height:1.4; text-overflow:ellipsis; text-transform:uppercase; white-space:nowrap; }
+.productname { width:100%; overflow-wrap:anywhere; }
+.productvariant { display:block; max-width:100%; overflow-wrap:anywhere; line-height:1.45; }
+.productcardfooter, .productcardtrust { display:flex; width:100%; min-width:0; align-items:center; justify-content:space-between; gap:7px; }
+.productcardfooter { margin-top:auto; padding-top:5px; border-top:1px solid var(--line); }
+.productcardfooter strong { min-width:0; overflow-wrap:anywhere; }
+.productcardfooter .condition { flex:0 0 auto; max-width:48%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.productcardtrust { color:var(--muted); font-size:9px; }
+.productseller { min-width:0; overflow:hidden; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.productcardtrust .asking { flex:0 0 auto; font-size:8px; }
+.detailidentity { margin:0 0 4px; white-space:normal; }
+@media (max-width:640px) {
+ .productcard { gap:7px; }
+ .productcardfooter { align-items:flex-start; }
+ .productcardfooter strong { font-size:13px; }
+ .productcardfooter .condition { max-width:44%; font-size:8px; }
+ .productcardtrust { gap:5px; }
+ .productcardtrust .asking { padding:4px 6px; font-size:8px; }
+}
