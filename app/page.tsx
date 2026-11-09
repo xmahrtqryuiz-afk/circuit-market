@@ -110,7 +110,7 @@ export default function Home() {
       setContactError(err instanceof Error ? err.message : "Could not unlock seller contact. Please try again.");
     } finally { setContactBusy(false); }
   }
-  const filtered = useMemo(() => products.filter(p => (category === "All" || p.category === category) && ([p.name, p.brand, p.model, p.variant, p.seller, p.category].filter(Boolean).join(" ")).toLowerCase().includes(query.toLowerCase())), [products, category, query]);
+  const filtered = useMemo(() => products.filter(p => (category === "All" || p.category === category) && ([p.name, p.brand, p.model, p.variant, p.seller, p.category].filter(Boolean).join(" ")).toLowerCase().includes(query.trim().toLowerCase())), [products, category, query]);
 
   return <main className="shell">
     <header className="topbar"><a className="brand" href="#" aria-label={`${brand.name} home`} onClick={() => setTab("Home")}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><span className="location">⌖ {brand.defaultLocationLabel}</span><AccountAccess onAuthChange={setUser}/></header>
