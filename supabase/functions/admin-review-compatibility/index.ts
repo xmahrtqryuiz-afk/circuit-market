@@ -38,20 +38,17 @@ Deno.serve(async(req:Request)=>{
   if(!isUuid(body.compatibility_id)||!["approved","rejected"].includes(String(body.decision))){
     return json({error:"A valid compatibility record and decision are required"},400);
   }
-  const {data:record,error:recordError}=await admin.from("product_compatibilities")
-    .select("id,submitted_by,review_status").eq("id",body.compatibility_id).maybeSingle();
-  if(recordError||!record)return json({error:"Compatibility record not found"},404);
-  if(record.submitted_by===user.id)return json({error:"You cannot review your own compatibility submission"},403);
-  if(record.review_status!=="pending")return json({error:"This compatibility record has already been reviewed"},409);
-
   const notes=typeof body.notes==="string"?body.notes.slice(0,1000):null;
-  const {data:updated,error:updateError}=await admin.from("product_compatibilities")
-    .update({review_status:body.decision,reviewed_by:user.id,reviewed_at:new Date().toISOString(),notes})
-    .eq("id",record.id).eq("review_status","pending").select("id,review_status").maybeSingle();
-  if(updateError)return json({error:"Compatibility review could not be saved"},500);
-  if(!updated)return json({error:"Compatibility record was reviewed by another administrator"},409);
-
-  await admin.from("moderation_events").insert({actor_id:user.id,target_type:"product_compatibility",target_id:record.id,action:body.decision,reason:notes});
-  await admin.from("audit_logs").insert({actor_id:user.id,action:"product_compatibility_"+body.decision,target_type:"product_compatibility",target_id:record.id});
-  return json({success:true,compatibility_id:record.id,review_status:updated.review_status});
+  const { data: result, error: reviewError } = await admin.rpc("admin_review_compatibility_atomic", {
+    p_actor_id: user.id,
+    p_compatibility_id: body.compatibility_id,
+    p_decision: String(body.decision),
+    p_notes: notes,
+  });
+  if (reviewError) {
+    const status = reviewError.code === "42501" ? 403 : reviewError.code === "P0002" ? 404
+      : reviewError.code === "P0001" ? 409 : reviewError.code === "22023" ? 422 : 500;
+    return json({ error: reviewError.message || "Compatibility review could not be saved" }, status);
+  }
+  return json(result);
 });
