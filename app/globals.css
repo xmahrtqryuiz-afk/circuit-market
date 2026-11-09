@@ -485,3 +485,21 @@ textarea:disabled {
     white-space: nowrap;
   }
 }
+
+
+/* PriceCheck: make the evidence scope and three-point range easy to scan. */
+.pricegrouphead { display: flex; flex-direction: column; gap: 9px; }
+.pricecontext { display: flex; flex-wrap: wrap; gap: 6px; }
+.pricecontext span { padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; background: #f8faf7; color: var(--muted); font-size: 10px; line-height: 1.35; text-transform: capitalize; }
+.priceitems { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 15px; }
+.pricemetric { display: flex; min-width: 0; flex-direction: column; gap: 7px; padding: 11px 9px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfa; }
+.pricemetric span { color: var(--muted); font-size: 10px; font-weight: 700; }
+.pricemetric b { color: var(--green); font: 750 12px Manrope, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.pricemetric.median { border-color: #cbdccf; background: #edf4ee; }
+.pricemetric.median span { color: var(--green); }
+.pricefootnote { margin: 11px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+@media (max-width: 640px) {
+  .priceitems { gap: 6px; }
+  .pricemetric { padding: 10px 7px; }
+  .pricemetric b { font-size: 11px; }
+}
