@@ -54,37 +54,16 @@ Deno.serve(async (req: Request) => {
     return json({ error: "A valid observation and review decision are required" }, 400);
   }
 
-  const { data: observation, error: observationError } = await admin
-    .from("price_observations").select("id,product_id,submitted_by,review_status")
-    .eq("id", observationId).maybeSingle();
-  if (observationError || !observation) return json({ error: "Price observation not found" }, 404);
-  if (observation.submitted_by === user.id) return json({ error: "You cannot review your own price submission" }, 403);
-  if (observation.review_status !== "pending") return json({ error: "This price observation has already been reviewed" }, 409);
-
-  const reviewedAt = new Date().toISOString();
-  const { data: updated, error: updateError } = await admin
-    .from("price_observations")
-    .update({ review_status: decision, reviewed_by: user.id, reviewed_at: reviewedAt, review_notes: reviewNotes })
-    .eq("id", observationId).eq("review_status", "pending")
-    .select("id,review_status").maybeSingle();
-
-  if (updateError) return json({ error: "The price review could not be saved" }, 500);
-  if (!updated) return json({ error: "This price observation was reviewed by someone else" }, 409);
-
-  const [eventResult, auditResult] = await Promise.all([
-    admin.from("moderation_events").insert({
-      actor_id: user.id, target_type: "price_observation", target_id: observationId,
-      action: decision, reason: reviewNotes,
-    }),
-    admin.from("audit_logs").insert({
-      actor_id: user.id, action: "price_observation_" + decision,
-      target_type: "price_observation", target_id: observationId,
-      metadata: { product_id: observation.product_id },
-    }),
-  ]);
-  if (eventResult.error || auditResult.error) {
-    return json({ success: true, observation_id: observationId, review_status: decision,
-      audit_warning: "Review saved; an audit event could not be recorded" }, 200);
+  const { data: result, error: reviewError } = await admin.rpc("admin_review_price_atomic", {
+    p_actor_id: user.id,
+    p_observation_id: observationId,
+    p_decision: decision,
+    p_review_notes: reviewNotes,
+  });
+  if (reviewError) {
+    const status = reviewError.code === "42501" ? 403 : reviewError.code === "P0002" ? 404
+      : reviewError.code === "P0001" ? 409 : reviewError.code === "22023" ? 422 : 500;
+    return json({ error: reviewError.message || "The price review could not be saved" }, status);
   }
-  return json({ success: true, observation_id: observationId, review_status: decision });
+  return json(result);
 });
