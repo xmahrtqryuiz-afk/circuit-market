@@ -89,6 +89,19 @@ export default function Home() {
     return () => { alive = false; };
   }, []);
 
+  useEffect(() => {
+    if (!selected) return;
+    function handleDialogKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelected(null);
+        setContactError("");
+        setUnlockedContact(null);
+      }
+    }
+    window.addEventListener("keydown", handleDialogKeyDown);
+    return () => window.removeEventListener("keydown", handleDialogKeyDown);
+  }, [selected]);
+
   const categoryNames = ["All", ...categories.map(c => c.name)];
 
   async function unlockSellerContact(channel: "phone" | "whatsapp") {
@@ -130,7 +143,7 @@ export default function Home() {
     {!loading && tab === "Sell" && <><section className="sectionhead"><div><div className="eyebrow">FOR SELLERS</div><h2>Seller workspace</h2><p className="muted">Register your store, manage inventory and request missing catalogue products.</p></div></section><SellerWorkspace user={user} categories={categories}/></>}
     <AdminDashboard user={user} active={tab === "Admin"} onAccessChange={setAdminAccess} categories={categories}/>
     <footer><a className="brand" href="#" aria-label={`${brand.name} home`}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><p>Built for electronics buyers and sellers in Nigeria.</p><small>EZPREZZ · Live catalogue connection</small></footer>
-    {selected && <div className="modalback" onClick={() => {setSelected(null); setContactError(""); setUnlockedContact(null);}}><div className="modal" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>{setSelected(null); setContactError(""); setUnlockedContact(null);}}>×</button><div className="productvisual large">{selected.imageUrl ? <img src={selected.imageUrl} alt={selected.imageAlt} /> : "▣"}</div><div className="eyebrow">{selected.category}</div><h2>{selected.name}</h2>{(selected.brand || selected.model) && <p className="productidentity detailidentity">{[selected.brand, selected.model].filter(Boolean).join(" · ")}</p>}<p className="muted">{[selected.variant, selected.condition.replaceAll("_", " ")].filter(Boolean).join(" · ")}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p><div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><div className="contact-actions"><button className="primary" disabled={contactBusy} onClick={()=>unlockSellerContact("phone")}>{contactBusy ? "Please wait…" : "Unlock phone"}</button><button className="secondary-action" disabled={contactBusy} onClick={()=>unlockSellerContact("whatsapp")}>Unlock WhatsApp</button></div>{contactError && <p className="account-error" role="alert">{contactError}</p>}{unlockedContact && <div className="unlocked-contact"><b>{unlockedContact.channel === "phone" ? "Seller phone" : "Seller WhatsApp"}</b><a href={unlockedContact.channel === "phone" ? `tel:${unlockedContact.contact}` : `https://wa.me/${unlockedContact.contact.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{unlockedContact.contact}</a></div>}<button className="secondary-action full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
+    {selected && <div className="modalback" onClick={() => {setSelected(null); setContactError(""); setUnlockedContact(null);}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="product-detail-title" onClick={e=>e.stopPropagation()}><button className="close" type="button" aria-label="Close product details" onClick={()=>{setSelected(null); setContactError(""); setUnlockedContact(null);}}>×</button><div className="productvisual large">{selected.imageUrl ? <img src={selected.imageUrl} alt={selected.imageAlt} /> : "▣"}</div><div className="eyebrow">{selected.category}</div><h2 id="product-detail-title">{selected.name}</h2>{(selected.brand || selected.model) && <p className="productidentity detailidentity">{[selected.brand, selected.model].filter(Boolean).join(" · ")}</p>}<p className="muted">{[selected.variant, selected.condition.replaceAll("_", " ")].filter(Boolean).join(" · ")}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p><div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><div className="contact-actions"><button className="primary" disabled={contactBusy} onClick={()=>unlockSellerContact("phone")}>{contactBusy ? "Please wait…" : "Unlock phone"}</button><button className="secondary-action" disabled={contactBusy} onClick={()=>unlockSellerContact("whatsapp")}>Unlock WhatsApp</button></div>{contactError && <p className="account-error" role="alert">{contactError}</p>}{unlockedContact && <div className="unlocked-contact"><b>{unlockedContact.channel === "phone" ? "Seller phone" : "Seller WhatsApp"}</b><a href={unlockedContact.channel === "phone" ? `tel:${unlockedContact.contact}` : `https://wa.me/${unlockedContact.contact.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{unlockedContact.contact}</a></div>}<button className="secondary-action full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
   </main>;
 }
 
