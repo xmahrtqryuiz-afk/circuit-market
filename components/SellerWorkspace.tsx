@@ -156,26 +156,36 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     event.preventDefault();
     if (!supabase || !editingId) return;
     setBusy(true); setError(""); setMessage("");
-    const { error: updateError } = await supabase.from("listings").update({
-      variant_label: editForm.variant_label.trim() || null, item_condition: editForm.item_condition,
-      asking_price: Number(editForm.asking_price), quantity: Number(editForm.quantity),
-      city: editForm.city.trim(), area: editForm.area.trim() || null, notes: editForm.notes.trim() || null,
-    }).eq("id", editingId);
-    if (updateError) setError(updateError.message);
-    else {
+    try {
+      const { error: updateError } = await supabase.from("listings").update({
+        variant_label: editForm.variant_label.trim() || null, item_condition: editForm.item_condition,
+        asking_price: Number(editForm.asking_price), quantity: Number(editForm.quantity),
+        city: editForm.city.trim(), area: editForm.area.trim() || null, notes: editForm.notes.trim() || null,
+      }).eq("id", editingId);
+      if (updateError) throw updateError;
       setOwnListings(current => current.map(item => item.id === editingId ? { ...item, ...editForm, asking_price: Number(editForm.asking_price), quantity: Number(editForm.quantity), variant_label: editForm.variant_label.trim() || null, area: editForm.area.trim() || null, notes: editForm.notes.trim() || null } : item));
-      setEditingId(""); setMessage("Listing details updated. Any required re-review remains subject to moderation.");
+      setEditingId("");
+      setMessage("Listing details updated. Any required re-review remains subject to moderation.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Listing details could not be updated.");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function deactivateListing(id: string) {
     if (!supabase || !window.confirm("Deactivate this listing? It will no longer appear in the public marketplace.")) return;
     setBusy(true); setError(""); setMessage("");
-    const { error: updateError } = await supabase.from("listings").update({ is_active: false }).eq("id", id);
-    if (updateError) setError(updateError.message);
-    else { setOwnListings(current => current.map(item => item.id === id ? { ...item, is_active: false } : item)); setMessage("Listing deactivated."); }
-    setBusy(false);
+    try {
+      const { error: updateError } = await supabase.from("listings").update({ is_active: false }).eq("id", id);
+      if (updateError) throw updateError;
+      setOwnListings(current => current.map(item => item.id === id ? { ...item, is_active: false } : item));
+      setMessage("Listing deactivated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Listing could not be deactivated.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function requestProduct(event: FormEvent<HTMLFormElement>) {
