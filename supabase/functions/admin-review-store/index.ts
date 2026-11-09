@@ -79,30 +79,19 @@ Deno.serve(async (req: Request) => {
     verificationRecordId = record.id;
   }
 
-  const reviewedAt = new Date().toISOString();
-  const { data: updated, error: updateError } = await admin.from("seller_stores")
-    .update({
-      verification_status: nextStatus,
-      verification_level: nextLevel,
-      verification_reviewed_at: reviewedAt,
-      verification_reviewed_by: user.id,
-    }).eq("id",storeId).select("id,verification_status,verification_level").maybeSingle();
-  if (updateError) return json({ error: "Seller verification could not be saved" }, 500);
-  if (!updated) return json({ error: "Seller verification was not updated" }, 409);
-
-  if (verificationRecordId) {
-    await admin.from("seller_verification_records").update({
-      verification_status:"approved", reviewer_id:user.id, reviewed_at:reviewedAt,
-    }).eq("id",verificationRecordId);
+  const { data: result, error: reviewError } = await admin.rpc("admin_review_store_atomic", {
+    p_actor_id: user.id,
+    p_store_id: storeId,
+    p_decision: decision,
+    p_review_notes: notes,
+    p_verification_record_id: verificationRecordId,
+  });
+  if (reviewError) {
+    const status = reviewError.code === "42501" ? 403
+      : reviewError.code === "P0002" ? 404
+      : reviewError.code === "P0001" ? 409
+      : reviewError.code === "22023" ? 422 : 500;
+    return json({ error: reviewError.message || "Seller verification could not be saved" }, status);
   }
-  await admin.from("moderation_events").insert({
-    actor_id:user.id,target_type:"store",target_id:storeId,
-    action:decision,reason:notes,
-  });
-  await admin.from("audit_logs").insert({
-    actor_id:user.id,action:"seller_store_"+decision,target_type:"store",target_id:storeId,
-    metadata:{verification_level:nextLevel},
-  });
-  return json({ success:true, store_id:storeId, verification_status:updated.verification_status,
-    verification_level:updated.verification_level });
+  return json(result);
 });
