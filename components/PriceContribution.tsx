@@ -9,6 +9,7 @@ type Report = { id: string; product_id: string; amount_value: number; item_condi
 
 export default function PriceContribution({ user, onRequestProduct }: { user: User | null; onRequestProduct: () => void }) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [productSearch, setProductSearch] = useState("");
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,7 +25,7 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
       setLoading(true); setError("");
       try {
         const [productResult, reportResult] = await Promise.all([
-          supabase.from("products").select("id,name,brand,model").eq("is_active", true).order("name").limit(500),
+          supabase.from("products").select("id,name,brand,model").eq("is_active", true).order("name").limit(1000),
           supabase.from("price_observations").select("id,product_id,amount_value,item_condition,review_status,observed_on,created_at").eq("submitted_by", user.id).order("created_at", { ascending: false }).limit(12),
         ]);
         if (productResult.error) throw productResult.error;
@@ -100,6 +101,8 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
   if (!user) return <section className="formcard"><div className="eyebrow">CONTRIBUTE TO PRICECHECK</div><h3>Share a real price observation</h3><p className="muted">Sign in to submit a price observation. All reports are reviewed before they can influence published ranges.</p></section>;
   if (loading) return <div className="empty">Loading your PriceCheck workspace…</div>;
 
+  const visibleProducts = products.filter(product => product.id === form.product_id || [product.name, product.brand, product.model].filter(Boolean).join(" ").toLowerCase().includes(productSearch.trim().toLowerCase()));
+
   const productName = (id: string) => {
     const product = products.find(item => item.id === id);
     return product ? [product.brand, product.name, product.model].filter(Boolean).join(" ") : "Catalogue product";
@@ -112,7 +115,9 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
       <div className="eyebrow">CONTRIBUTE TO PRICE INTELLIGENCE</div><h3>Submit a price observation</h3>
       {products.length ? <form onSubmit={submit}>
         <div className="formgrid">
-          <label>Product<select required value={form.product_id} onChange={e => setForm({ ...form, product_id: e.target.value })}><option value="">Choose a catalogue product</option>{products.map(p => <option key={p.id} value={p.id}>{[p.brand, p.name, p.model].filter(Boolean).join(" ")}</option>)}</select></label>
+          <label>Find a product<input type="search" value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search name, brand or model…" /></label>
+          <label>Product<select required value={form.product_id} onChange={e => setForm({ ...form, product_id: e.target.value })}><option value="">Choose a catalogue product ({visibleProducts.length} matches)</option>{visibleProducts.map(p => <option key={p.id} value={p.id}>{[p.brand, p.name, p.model].filter(Boolean).join(" ")}</option>)}</select></label>
+          {!visibleProducts.length && <p className="muted">No catalogue products match this search. Request the missing product from the Sell tab.</p>}
           <label>Variant / specifications<input value={form.variant_label} onChange={e => setForm({ ...form, variant_label: e.target.value })} placeholder="Exact model, storage, part code…" /></label>
           <label>Condition<select value={form.item_condition} onChange={e => setForm({ ...form, item_condition: e.target.value })}>{["new", "used", "refurbished", "new_aftermarket", "used_salvaged"].map(v => <option key={v} value={v}>{v.replaceAll("_", " ")}</option>)}</select></label>
           <label>Observed price (NGN)<input required type="number" min="1" step="1" value={form.amount_value} onChange={e => setForm({ ...form, amount_value: e.target.value })} /></label>

@@ -26,6 +26,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   const [listingFilter, setListingFilter] = useState("all");
   const [editForm, setEditForm] = useState({ variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "", area: "", notes: "" });
   const [catalogue, setCatalogue] = useState<CatalogueProduct[]>([]);
+  const [catalogueSearch, setCatalogueSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -55,7 +56,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       try {
         const [storeResult, productsResult] = await Promise.all([
           supabase.from("seller_stores").select("id,store_name,description,city,area,verification_status,verification_level,is_open").eq("owner_id", user.id).maybeSingle(),
-          supabase.from("products").select("id,name,brand,model,category_id").eq("is_active", true).order("name").limit(300),
+          supabase.from("products").select("id,name,brand,model,category_id").eq("is_active", true).order("name").limit(1000),
         ]);
         if (storeResult.error) throw storeResult.error;
         if (productsResult.error) throw productsResult.error;
@@ -351,6 +352,8 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     } finally { setBusy(false); }
   }
 
+  const visibleCatalogue = catalogue.filter(product => product.id === listingForm.product_id || [product.name, product.brand, product.model].filter(Boolean).join(" ").toLowerCase().includes(catalogueSearch.trim().toLowerCase()));
+
   const visibleOwnListings = ownListings.filter(item => {
     if (listingFilter === "active") return item.is_active;
     if (listingFilter === "inactive") return !item.is_active;
@@ -391,7 +394,9 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       <div className="eyebrow">YOUR INVENTORY</div><h3>Create a listing</h3>
       {catalogue.length ? <form onSubmit={createListing}>
         <div className="formgrid">
-          <label>Catalogue product<select required value={listingForm.product_id} onChange={e => setListingForm({ ...listingForm, product_id: e.target.value })}><option value="">Choose a product</option>{catalogue.map(p => <option key={p.id} value={p.id}>{[p.brand, p.name, p.model].filter(Boolean).join(" ")}</option>)}</select></label>
+          <label>Find a catalogue product<input type="search" value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} placeholder="Search name, brand or model…" /></label>
+          <label>Catalogue product<select required value={listingForm.product_id} onChange={e => setListingForm({ ...listingForm, product_id: e.target.value })}><option value="">Choose a product ({visibleCatalogue.length} matches)</option>{visibleCatalogue.map(p => <option key={p.id} value={p.id}>{[p.brand, p.name, p.model].filter(Boolean).join(" ")}</option>)}</select></label>
+          {!visibleCatalogue.length && <p className="muted">No matching catalogue product in the loaded list. Use the product request form below to ask for it to be added.</p>}
           <label>Variant / specifications<input value={listingForm.variant_label} onChange={e => setListingForm({ ...listingForm, variant_label: e.target.value })} placeholder="e.g. 8GB / 256GB" /></label>
           <label>Condition<select value={listingForm.item_condition} onChange={e => setListingForm({ ...listingForm, item_condition: e.target.value })}>{conditions.map(v => <option key={v} value={v}>{v.replaceAll("_", " ")}</option>)}</select></label>
           <label>Asking price (NGN)<input required type="number" min="1" step="1" value={listingForm.asking_price} onChange={e => setListingForm({ ...listingForm, asking_price: e.target.value })} /></label>
