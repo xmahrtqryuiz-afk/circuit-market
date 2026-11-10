@@ -225,6 +225,53 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     }
   }
 
+  async function moveListingImage(listingId: string, index: number, direction: -1 | 1) {
+    if (!supabase || !user) return;
+    const current = [...(imagesByListing[listingId] ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= current.length) return;
+    const first = current[index];
+    const second = current[targetIndex];
+    if (!first.storage_path.startsWith(user.id + "/") || !second.storage_path.startsWith(user.id + "/")) {
+      setError("Only photos uploaded by your account can be reordered.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    const [firstUpdate, secondUpdate] = await Promise.all([
+      supabase.from("listing_images").update({ sort_order: second.sort_order }).eq("id", first.id),
+      supabase.from("listing_images").update({ sort_order: first.sort_order }).eq("id", second.id),
+    ]);
+    if (firstUpdate.error || secondUpdate.error) {
+      setError(firstUpdate.error?.message || secondUpdate.error?.message || "Photo order could not be updated.");
+    } else {
+      const reordered = [...current];
+      reordered[index] = { ...second, sort_order: first.sort_order };
+      reordered[targetIndex] = { ...first, sort_order: second.sort_order };
+      setImagesByListing(previous => ({ ...previous, [listingId]: reordered }));
+      setMessage("Listing photo order updated.");
+    }
+    setBusy(false);
+  }
+
+  async function removeListingImage(listingId: string, image: SellerImage) {
+    if (!supabase || !user || !window.confirm("Remove this photo from the listing?")) return;
+    if (!image.storage_path.startsWith(user.id + "/")) {
+      setError("Only photos uploaded by your account can be removed.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    const { error: rowError } = await supabase.from("listing_images").delete().eq("id", image.id);
+    if (rowError) {
+      setError(rowError.message);
+      setBusy(false);
+      return;
+    }
+    const { error: storageError } = await supabase.storage.from("listing-images").remove([image.storage_path]);
+    setImagesByListing(previous => ({ ...previous, [listingId]: (previous[listingId] ?? []).filter(item => item.id !== image.id) }));
+    setMessage(storageError ? "Photo removed from the listing. Its unused storage file may need cleanup." : "Photo removed from the listing.");
+    setBusy(false);
+  }
+
   async function requestProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !supabase) return;
