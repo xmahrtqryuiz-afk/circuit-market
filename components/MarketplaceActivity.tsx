@@ -30,8 +30,9 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   const [compatTarget, setCompatTarget] = useState("");
   const [compatType, setCompatType] = useState("fits");
   const [compatNotes, setCompatNotes] = useState("");
+  const [catalogueProducts, setCatalogueProducts] = useState<ProductOption[]>(products);
 
-  const uniqueProducts = useMemo(() => Array.from(new Map(products.map(p => [p.productId, p])).values()), [products]);
+  const uniqueProducts = useMemo(() => Array.from(new Map(catalogueProducts.map(p => [p.productId, p])).values()), [catalogueProducts]);
   const productMap = useMemo(() => new Map(uniqueProducts.map(p => [p.productId, p])), [uniqueProducts]);
   const storeMap = useMemo(() => new Map(stores.map(s => [s.id, s])), [stores]);
 
@@ -56,7 +57,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
       ? dealQuery.or(`buyer_id.eq.${user.id},store_id.in.(${storeIds.join(",")})`)
       : dealQuery.eq("buyer_id", user.id);
     const dealResult = await dealQuery;
-    if (dealResult.error) { setError(dealResult.error.message); return; }
+    if (dealResult.error) { setError(dealResult.error.message); setLoading(false); return; }
     const nextDeals = (dealResult.data ?? []) as Deal[];
     setDeals(nextDeals);
     const listingIds = [...new Set(nextDeals.map(d => d.listing_id))];
@@ -75,13 +76,29 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
 
   useEffect(() => { void loadActivity(); }, [loadActivity]);
 
+  useEffect(() => {
+    let active = true;
+    if (!supabase) return;
+    void supabase.from("products").select("id,name,brand,model")
+      .eq("is_active", true).order("name").limit(500)
+      .then(({ data, error }) => {
+        if (!active || error || !data) return;
+        setCatalogueProducts(data.map(product => ({
+          productId: product.id, name: product.name, brand: product.brand ?? null, model: product.model ?? null,
+        })));
+      });
+    return () => { active = false; };
+  }, []);
+
   async function confirmSeller(deal: Deal) {
     if (!supabase || !user) return;
     setBusy(deal.id); setError(""); setMessage("");
-    const { error: updateError } = await supabase.from("deal_confirmations")
+    const { data: updatedDeal, error: updateError } = await supabase.from("deal_confirmations")
       .update({ seller_confirmed_at: new Date().toISOString() })
-      .eq("id", deal.id).eq("store_id", deal.store_id).eq("deal_status", "pending");
+      .eq("id", deal.id).eq("store_id", deal.store_id).eq("deal_status", "pending")
+      .select("id").maybeSingle();
     if (updateError) setError(updateError.message);
+    else if (!updatedDeal) setError("This deal could not be confirmed. It may have already changed or your account may not own the seller store.");
     else { setMessage("Your confirmation was recorded. The deal is confirmed when both sides have confirmed."); await loadActivity(); }
     setBusy("");
   }
