@@ -105,7 +105,7 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 
 ## Verification and release gates
 
-- The Next.js production build and Edge Function type checks passed in the last recorded Phase 1 CI run. The newest commits still need a fresh CI result; the latest commit status only exposes a pending Vercel check. The Vercel team context currently lists no linked projects, so that check cannot yet be verified against a deployment.
+- The Next.js production build and Edge Function type checks passed in the last recorded Phase 1 CI run. The newest commits still need a fresh CI result. The latest commit has a failing Vercel status check, but its target deployment returns 404 and the connected Vercel account lists only the EXPRESS team with zero linked projects or deployments. The failure cannot be diagnosed until the existing project is visible to the connected account.
 - Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, buyer deal-confirmation access control, and the reports/compatibility/deal/review contributor lifecycle, public approved-only compatibility visibility, and seller listing-image reorder/delete permissions. The newest contributor workflow test passed inside a transaction, and a follow-up query confirmed zero remaining synthetic users, stores, products, deals, reports, compatibility rows or reviews.
 - A clean development database has not been created because the free route does not provide the required isolated database/branch.
 - Vercel preview deployment is not yet verified.
