@@ -109,7 +109,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         const path = user.id + "/" + saved.id + "/business/" + crypto.randomUUID() + "." + extension;
         const { error: uploadError } = await supabase.storage.from("verification-documents").upload(path, verificationFile, { contentType: verificationFile.type, upsert: false });
         if (uploadError) throw uploadError;
-        const { error: evidenceError } = await supabase.from("seller_verification_records").insert({ store_id: saved.id, submitted_by: user.id, verification_type: "business", verification_status: "pending", evidence_storage_path: path, evidence_mime_type: verificationFile.type });
+        const { error: evidenceError } = await supabase.from("seller_verification_records").insert({ store_id: saved.id, submitted_by: user.id, verification_type: "business", evidence_storage_path: path, evidence_mime_type: verificationFile.type });
         if (evidenceError) { await supabase.storage.from("verification-documents").remove([path]); throw evidenceError; }
         setVerificationFile(null);
       }
