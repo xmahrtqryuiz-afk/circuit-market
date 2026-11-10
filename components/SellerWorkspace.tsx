@@ -31,6 +31,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   const [error, setError] = useState("");
   const [verificationFile, setVerificationFile] = useState<File | null>(null);
   const [listingImages, setListingImages] = useState<File[]>([]);
+  const [extraImages, setExtraImages] = useState<Record<string, File[]>>({});
   const [storeForm, setStoreForm] = useState({ store_name: "", description: "", city: "Port Harcourt", area: "", contact_phone: "", whatsapp_number: "" });
   const [listingForm, setListingForm] = useState({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "Port Harcourt", area: "", notes: "" });
   const [requestForm, setRequestForm] = useState({ requested_name: "", brand: "", model: "", product_type: "finished_product", category_id: "", compatibility_notes: "" });
@@ -275,6 +276,45 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     const { error: storageError } = await supabase.storage.from("listing-images").remove([image.storage_path]);
     setImagesByListing(previous => ({ ...previous, [listingId]: (previous[listingId] ?? []).filter(item => item.id !== image.id) }));
     setMessage(storageError ? "Photo removed from the listing. Its unused storage file may need cleanup." : "Photo removed from the listing.");
+    setBusy(false);
+  }
+
+  async function addListingImages(listingId: string) {
+    if (!supabase || !user) return;
+    const files = extraImages[listingId] ?? [];
+    if (!files.length) return;
+    const currentImages = imagesByListing[listingId] ?? [];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (currentImages.length + files.length > 5 || files.some(file => !allowedTypes.includes(file.type) || file.size > 5 * 1024 * 1024)) {
+      setError("A listing can have up to 5 JPG, PNG or WebP photos, each no larger than 5 MB.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    const added: SellerImage[] = [];
+    let warning = "";
+    let nextOrder = currentImages.reduce((max, image) => Math.max(max, image.sort_order), -1) + 1;
+    for (const file of files) {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = user.id + "/" + listingId + "/" + crypto.randomUUID() + "." + extension;
+      const { error: uploadError } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) { warning = uploadError.message; break; }
+      const { data: imageRow, error: insertError } = await supabase.from("listing_images").insert({
+        listing_id: listingId, uploaded_by: user.id, storage_path: path,
+        alt_text: "Seller listing image", sort_order: nextOrder,
+      }).select("id,listing_id,storage_path,alt_text,sort_order,image_review_status").single();
+      if (insertError) {
+        await supabase.storage.from("listing-images").remove([path]);
+        warning = insertError.message;
+        break;
+      }
+      added.push(imageRow as SellerImage);
+      nextOrder += 1;
+    }
+    if (added.length) {
+      setImagesByListing(previous => ({ ...previous, [listingId]: [...(previous[listingId] ?? []), ...added] }));
+      setExtraImages(previous => ({ ...previous, [listingId]: files.slice(added.length) }));
+    }
+    setMessage(added.length ? added.length + " photo(s) added to the listing." + (warning ? " Remaining uploads need retry: " + warning : "") : "No photos were added. " + warning);
     setBusy(false);
   }
 
