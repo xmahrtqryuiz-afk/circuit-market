@@ -550,3 +550,10 @@ textarea:disabled {
 .compatibility-row b { font-size:11px; line-height:1.45; }
 .compatibility-row span { align-self:flex-start; padding:4px 7px; border-radius:6px; background:var(--green-soft); color:var(--green); font-size:9px; font-weight:700; text-transform:capitalize; }
 .compatibility-row small { color:var(--muted); font-size:10px; line-height:1.5; }
+
+
+.verification-history { display:flex; flex-direction:column; gap:8px; margin:0 0 16px; padding:12px; border:1px solid var(--line); border-radius:10px; background:#fbfcfa; }
+.verification-history>b { color:var(--ink); font-size:11px; }
+.verification-history>div { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding-top:8px; border-top:1px solid var(--line); }
+.verification-history>div>span { color:var(--muted); font-size:10px; text-transform:capitalize; }
+.verification-history>div>small { margin-left:auto; color:var(--muted); font-size:9px; }
