@@ -62,7 +62,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 
 ## Backend foundation and real data status
 
-- The live Supabase migration ledger contains 23 applied migrations. Only one of the 17 historical migration source files is present in the working branch; six incremental Phase 1 repair migrations are present and applied. See `docs/PHASE1_MIGRATION_RECONCILIATION.md`.
+- The live Supabase migration ledger contains 24 applied migrations. Only one of the 17 historical migration source files is present in the working branch; seven incremental Phase 1 repair migrations are present and applied. See `docs/PHASE1_MIGRATION_RECONCILIATION.md`.
 - RLS is enabled on all audited public tables.
 - Nine Edge Functions are active with JWT verification enabled; all deployed function sources were checked against the working branch.
 - Security and health advisors report no findings. Performance advisor reports informational unused-index notices; no indexes were removed.
@@ -109,7 +109,7 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 ## Verification and release gates
 
 - The Next.js production build and Edge Function type checks passed in the last recorded Phase 1 CI run. The newest commits still need a fresh CI result; the latest commit status only exposes a pending Vercel check. The Vercel team context currently lists no linked projects, so that check cannot yet be verified against a deployment.
-- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, buyer deal-confirmation access control, and the reports/compatibility/deal/review contributor lifecycle. The newest contributor workflow test passed inside a transaction, and a follow-up query confirmed zero remaining synthetic users, stores, products, deals, reports, compatibility rows or reviews.
+- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, buyer deal-confirmation access control, and the reports/compatibility/deal/review contributor lifecycle, and public approved-only compatibility visibility. The newest contributor workflow test passed inside a transaction, and a follow-up query confirmed zero remaining synthetic users, stores, products, deals, reports, compatibility rows or reviews.
 - A clean development database has not been created because the free route does not provide the required isolated database/branch.
 - Vercel preview deployment is not yet verified.
 - Phase 1 is not complete until migration history is reproducible from a clean database, latest CI/build is green, real-session buyer/seller/admin workflows pass, Vercel preview is verified, and security/accessibility/release checks pass.
