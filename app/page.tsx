@@ -37,6 +37,7 @@ export default function Home() {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [loading, setLoading] = useState(true);
+  const [catalogueReloadKey, setCatalogueReloadKey] = useState(0);
   const [error, setError] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [adminAccess, setAdminAccess] = useState(false);
@@ -103,7 +104,7 @@ export default function Home() {
     }
     loadPublicCatalogue();
     return () => { alive = false; };
-  }, []);
+  }, [catalogueReloadKey]);
 
   useEffect(() => {
     setReportOpen(false);
@@ -241,8 +242,8 @@ export default function Home() {
   return <main className="shell">
     <header className="topbar"><a className="brand" href="#" aria-label={`${brand.name} home`} onClick={() => setTab("Home")}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><span className="location">⌖ {brand.defaultLocationLabel}</span><AccountAccess onAuthChange={setUser}/></header>
     <section className="hero"><div className="eyebrow">{brand.name} · ELECTRONICS MARKETPLACE</div><h1>Find it. Compare it.<br/><em>Buy with confidence.</em></h1><p>Explore electronics, compare seller prices and connect with shops around Port Harcourt.</p><div className="searchbar"><span>⌕</span><input aria-label="Search electronics listings" value={query} onChange={e => {setQuery(e.target.value); setTab("Explore");}} placeholder="Search phones, parts, laptops, tools..."/><button onClick={() => setTab("Explore")}>Search</button></div><div className="hero-note"><span className="dot"/> Live catalogue · Published price evidence only</div></section>
-    <nav className="tabs">{["Home", "Explore", "PriceCheck", "Sell", ...(user ? ["My Activity"] : []), ...(adminAccess ? ["Admin"] : [])].map(t => <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t === "PriceCheck" ? "₦ PriceCheck" : t === "My Activity" ? "Activity" : t}</button>)}</nav>
-    {error && <div className="notice" role="alert">The catalogue could not be loaded: {error}</div>}
+    <nav className="tabs" aria-label="Main navigation">{["Home", "Explore", "PriceCheck", "Sell", ...(user ? ["My Activity"] : []), ...(adminAccess ? ["Admin"] : [])].map(t => <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t === "PriceCheck" ? "₦ PriceCheck" : t === "My Activity" ? "Activity" : t}</button>)}</nav>
+    {error && <div className="notice" role="alert"><span>The catalogue could not be loaded: {error}</span> <button className="textbutton" type="button" onClick={() => setCatalogueReloadKey(value => value + 1)} disabled={loading}>{loading ? "Retrying…" : "Try again"}</button></div>}
     {loading && <div className="empty">Connecting to the EZPREZZ catalogue…</div>}
     {!loading && tab === "Home" && <>
       <section className="sectionhead"><div><div className="eyebrow">START EXPLORING</div><h2>Shop electronics</h2></div><button className="textbutton" onClick={() => setTab("Explore")}>View all →</button></section>
