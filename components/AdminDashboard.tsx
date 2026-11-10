@@ -84,6 +84,7 @@ export default function AdminDashboard({ user, active, onAccessChange, categorie
       setError("Enter a valid Auth user UUID.");
       return;
     }
+    if (!window.confirm(`Confirm ${action} of ${roleToManage.replaceAll("_", " ")} for account ${targetId}?`)) return;
     setBusyId("role-management");
     setError("");
     setNotice("");
