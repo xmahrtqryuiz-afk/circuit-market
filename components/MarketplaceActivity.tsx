@@ -107,7 +107,6 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     const { error: insertError } = await supabase.from("product_compatibilities").insert({
       part_product_id: compatPart, compatible_product_id: compatTarget,
       compatibility_type: compatType, notes: compatNotes.trim() || null, submitted_by: user.id,
-      review_status: "pending",
     });
     if (insertError) setError(insertError.code === "23505" ? "That compatibility suggestion has already been submitted." : insertError.message);
     else { setMessage("Compatibility suggestion submitted for catalogue review."); setCompatNotes(""); }
@@ -159,7 +158,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
       {uniqueProducts.length < 2 ? <p className="empty">At least two active catalogue products are needed before a compatibility suggestion can be submitted.</p> :
         <form className="activity-form" onSubmit={submitCompatibility}>
           <label>Part or accessory<select required value={compatPart} onChange={e => setCompatPart(e.target.value)}><option value="">Choose a product</option>{uniqueProducts.map(p => <option key={p.productId} value={p.productId}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
-          <label>Compatible product<select required value={compatTarget} onChange={e => setCompatTarget(e.target.value)}><option value="">Choose a product</option>{products.map(p => <option key={p.productId} value={p.productId} disabled={p.productId === compatPart}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
+          <label>Compatible product<select required value={compatTarget} onChange={e => setCompatTarget(e.target.value)}><option value="">Choose a product</option>{uniqueProducts.map(p => <option key={p.productId} value={p.productId} disabled={p.productId === compatPart}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
           <label>Relationship<select value={compatType} onChange={e => setCompatType(e.target.value)}><option value="fits">Fits</option><option value="works_with">Works with</option><option value="replacement_for">Replacement for</option><option value="not_compatible">Not compatible</option></select></label>
           <label>Evidence or notes (optional)<textarea rows={3} maxLength={1000} value={compatNotes} onChange={e => setCompatNotes(e.target.value)} placeholder="Add model numbers, version details or the basis for this suggestion." /></label>
           <button className="primary" type="submit" disabled={busy === "compatibility"}>{busy === "compatibility" ? "Submitting…" : "Submit suggestion"}</button>
