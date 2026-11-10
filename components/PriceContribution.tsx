@@ -51,14 +51,25 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
         return;
       }
     }
+    const evidenceUrl = form.evidence_url.trim();
+    if (evidenceUrl) {
+      try {
+        const parsed = new URL(evidenceUrl);
+        if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname) throw new Error("invalid");
+      } catch {
+        setError("Evidence links must be valid HTTP or HTTPS URLs.");
+        setMessage("");
+        return;
+      }
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       const { data, error: insertError } = await supabase.from("price_observations").insert({
         product_id: form.product_id, submitted_by: user.id, variant_label: form.variant_label.trim() || null,
         item_condition: form.item_condition, amount_value: Number(form.amount_value), city: form.city.trim(),
         area: form.area.trim() || null, source_type: form.source_type,
-        source_description: form.source_description.trim(), evidence_url: form.evidence_url.trim() || null,
-        observed_on: form.observed_on, currency_code: "NGN", review_status: "pending", reviewed_at: null,
+        source_description: form.source_description.trim(), evidence_url: evidenceUrl || null,
+        observed_on: form.observed_on, currency_code: "NGN",
       }).select("id,product_id,amount_value,item_condition,review_status,observed_on,created_at").single();
       if (insertError) throw insertError;
       let evidenceWarning = "";
