@@ -45,7 +45,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 - Email/password sign-up, sign-in and sign-out are connected to the existing Supabase Auth tenant.
 - Authenticated sellers can register a store, update its public profile and save phone/WhatsApp values in the private `seller_store_contacts` table.
 - Sellers can submit listings for review against active catalogue products, with up to five JPG/PNG/WebP photos (5 MB each) uploaded to the existing listing-images bucket.
-- Sellers can edit listing details, deactivate their own listings, preview their listing photos, reorder photos they uploaded and remove their own photos; the database trigger retains existing price-flag and moderation checks.
+- Sellers can edit listing details, deactivate their own listings, preview their listing photos, reorder photos they uploaded, remove their own photos and filter inventory by active/review status; the database trigger retains existing price-flag and moderation checks.
 - Sellers can view listing status and recent product request statuses.
 - Sellers can request missing catalogue products; requests remain pending until the existing admin process accepts or rejects them.
 - Sellers can submit business verification documents to the existing private verification-documents bucket; only authorised reviewers receive short-lived signed review links.
@@ -73,7 +73,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 
 ## Remaining frontend and integration work
 
-- Additional-photo uploads to existing listings and richer inventory filters.
+- Additional-photo uploads to existing listings.
 - Listing image ordering/removal UI and a guided retry path for failed image uploads.
 - User-facing report submission and product compatibility contribution flows; the administrator queues exist, but these contributor workflows are not yet present in the current page UI.
 - Deal confirmation and marketplace review buyer/seller flows need frontend integration and end-to-end validation; the database deal-confirmation gate is now hardened.
