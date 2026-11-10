@@ -10,10 +10,10 @@ declare
   v_phone_store uuid;
 begin
   insert into auth.users(id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at,email_confirmed_at)
-  values(v_email_user,'authenticated','authenticated','phase1-email-verified@example.invalid','','{}'::jsonb,'{}'::jsonb,now(),now(),now());
+  values(v_email_user,'authenticated','authenticated','phase1-email-verified@example.invalid','','{}'::jsonb,'{"display_name":"Test Email User","city":"Test City"}'::jsonb,now(),now(),now());
 
   insert into auth.users(id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at,email_confirmed_at,phone_confirmed_at)
-  values(v_phone_user,'authenticated','authenticated','phase1-phone-verified@example.invalid','','{}'::jsonb,'{}'::jsonb,now(),now(),now(),now());
+  values(v_phone_user,'authenticated','authenticated','phase1-phone-verified@example.invalid','','{}'::jsonb,'{"display_name":"Test Phone User","city":"Test City"}'::jsonb,now(),now(),now(),now());
 
   select id into v_country from public.countries limit 1;
   if v_country is null then raise exception 'No country fixture available'; end if;
