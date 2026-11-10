@@ -74,7 +74,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 ## Remaining frontend and integration work
 
 - Listing image ordering/removal UI and richer inventory filters.
-- Seller verification upload retry/status polish and explicit resubmission feedback.
+- Listing image ordering/removal UI and a guided retry path for failed image uploads.
 - User-facing report submission and product compatibility contribution flows; the administrator queues exist, but these contributor workflows are not yet present in the current page UI.
 - Deal confirmation and marketplace review buyer/seller flows need frontend integration and end-to-end validation; the database deal-confirmation gate is now hardened.
 - Product request status/history polish for the requester.
