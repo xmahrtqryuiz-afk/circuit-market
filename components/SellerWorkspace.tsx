@@ -244,6 +244,8 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       supabase.from("listing_images").update({ sort_order: first.sort_order }).eq("id", second.id),
     ]);
     if (firstUpdate.error || secondUpdate.error) {
+      const refreshed = await supabase.from("listing_images").select("id,listing_id,storage_path,alt_text,sort_order,image_review_status").eq("listing_id", listingId).order("sort_order");
+      if (!refreshed.error) setImagesByListing(previous => ({ ...previous, [listingId]: (refreshed.data ?? []) as SellerImage[] }));
       setError(firstUpdate.error?.message || secondUpdate.error?.message || "Photo order could not be updated.");
     } else {
       const reordered = [...current];
