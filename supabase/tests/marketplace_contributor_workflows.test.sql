@@ -65,7 +65,7 @@ values(current_setting('phase1.workflow.product')::uuid,current_setting('phase1.
 
 do $compat_assert$
 begin
- if not exists(select 1 from public.product_compatibilities where submitted_by=auth.uid() and part_product_id=current_setting('phase1.workflow.product')::uuid and review_status='pending' and reviewed_by is null) then
+ if not exists(select 1 from public.product_compatibilities where submitted_by=auth.uid() and part_product_id=current_setting('phase1.workflow.product')::uuid and review_status='pending') then
   raise exception 'Compatibility suggestion was not pending';
  end if;
  begin
