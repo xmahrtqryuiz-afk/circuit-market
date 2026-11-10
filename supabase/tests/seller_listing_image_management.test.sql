@@ -30,6 +30,7 @@ begin
  insert into public.listing_images(listing_id,uploaded_by,storage_path,alt_text,sort_order)
  values(v_listing,'cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd','cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd/'||v_listing||'/foreign.webp','Foreign uploader',2)
  returning id into v_foreign_image;
+ perform set_config('phase1.image.listing',v_listing::text,true);
  perform set_config('phase1.image.one',v_image_one::text,true);
  perform set_config('phase1.image.two',v_image_two::text,true);
  perform set_config('phase1.image.foreign',v_foreign_image::text,true);
@@ -45,6 +46,14 @@ declare v_deleted integer;
 begin
  if not exists(select 1 from public.listing_images where id=current_setting('phase1.image.one')::uuid and sort_order=1) then raise exception 'Owner could not reorder first image'; end if;
  if not exists(select 1 from public.listing_images where id=current_setting('phase1.image.two')::uuid and sort_order=0) then raise exception 'Owner could not reorder second image'; end if;
+ insert into public.listing_images(listing_id,uploaded_by,storage_path,alt_text,sort_order)
+ values(current_setting('phase1.image.listing')::uuid,auth.uid(),auth.uid()::text||'/'||current_setting('phase1.image.listing')||'/added.webp','Added photo',3);
+ if not exists(select 1 from public.listing_images where listing_id=current_setting('phase1.image.listing')::uuid and alt_text='Added photo') then raise exception 'Owner could not add a listing photo'; end if;
+ begin
+  insert into public.listing_images(listing_id,uploaded_by,storage_path,alt_text,sort_order)
+  values(current_setting('phase1.image.listing')::uuid,auth.uid(),'other-user/'||current_setting('phase1.image.listing')||'/bad.webp','Invalid path',4);
+  raise exception 'SECURITY FAILURE: owner inserted an image outside their storage folder';
+ exception when insufficient_privilege then null; end;
  delete from public.listing_images where id=current_setting('phase1.image.foreign')::uuid;
  get diagnostics v_deleted = row_count;
  if v_deleted <> 0 then raise exception 'SECURITY FAILURE: owner deleted an image uploaded by another user'; end if;
