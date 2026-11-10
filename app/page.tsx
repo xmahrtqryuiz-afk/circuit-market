@@ -16,7 +16,8 @@ type Product = {
   id: string; productId: string; name: string; brand: string | null; model: string | null; category: string; variant: string; condition: string;
   price: number; seller: string; storeId: string; area: string; city: string; description: string; imageUrl: string | null; imageAlt: string;
 };
-type CompatibilityLink = { id: string; compatibility_type: string; notes: string | null; otherProductName: string; direction: "outgoing" | "incoming" };\ntype PriceRange = {
+type CompatibilityLink = { id: string; compatibility_type: string; notes: string | null; otherProductName: string; direction: "outgoing" | "incoming" };
+type PriceRange = {
   id: string; product_id: string; variant_label: string | null; item_condition: string;
   currency_code: string; geographic_level: string; sample_count: number;
   min_price: number | null; median_price: number | null; max_price: number | null;
@@ -48,7 +49,9 @@ export default function Home() {
   const [reportDetails, setReportDetails] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
   const [reportMessage, setReportMessage] = useState("");
-  const [reportError, setReportError] = useState("");\n  const [compatibilityLinks, setCompatibilityLinks] = useState<CompatibilityLink[]>([]);\n  const [compatibilityLoading, setCompatibilityLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [compatibilityLinks, setCompatibilityLinks] = useState<CompatibilityLink[]>([]);
+  const [compatibilityLoading, setCompatibilityLoading] = useState(false);
 
   useEffect(() => {
     let alive = true;
