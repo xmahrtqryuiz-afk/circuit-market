@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -17,6 +17,7 @@ type Review = { id: string; deal_id: string; review_type: "seller" | "product"; 
 const money = (amount: number) => new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
 
 export default function MarketplaceActivity({ user, products }: { user: User | null; products: ProductOption[] }) {
+  const lastActivityUserId = useRef<string | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [listings, setListings] = useState<Record<string, Listing>>({});
@@ -35,6 +36,13 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   const storeMap = useMemo(() => new Map(stores.map(s => [s.id, s])), [stores]);
 
   const loadActivity = useCallback(async () => {
+    const nextUserId = user?.id ?? null;
+    if (lastActivityUserId.current !== nextUserId) {
+      lastActivityUserId.current = nextUserId;
+      setDeals([]); setStores([]); setListings({}); setReviews([]);
+      setCompatPart(""); setCompatTarget(""); setCompatType("fits"); setCompatNotes("");
+      setMessage(""); setError("");
+    }
     if (!supabase || !user) { setDeals([]); setStores([]); setListings({}); setReviews([]); setLoading(false); return; }
     setLoading(true); setError("");
     const storeResult = await supabase.from("seller_stores").select("id,store_name,owner_id").eq("owner_id", user.id);
