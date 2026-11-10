@@ -41,15 +41,16 @@ update public.listing_images set sort_order=1 where id=current_setting('phase1.i
 update public.listing_images set sort_order=0 where id=current_setting('phase1.image.two')::uuid;
 
 do $assert_reorder$
+declare v_deleted integer;
 begin
  if not exists(select 1 from public.listing_images where id=current_setting('phase1.image.one')::uuid and sort_order=1) then raise exception 'Owner could not reorder first image'; end if;
  if not exists(select 1 from public.listing_images where id=current_setting('phase1.image.two')::uuid and sort_order=0) then raise exception 'Owner could not reorder second image'; end if;
- begin
-  delete from public.listing_images where id=current_setting('phase1.image.foreign')::uuid;
-  raise exception 'SECURITY FAILURE: owner deleted an image uploaded by another user';
- exception when insufficient_privilege then null; end;
+ delete from public.listing_images where id=current_setting('phase1.image.foreign')::uuid;
+ get diagnostics v_deleted = row_count;
+ if v_deleted <> 0 then raise exception 'SECURITY FAILURE: owner deleted an image uploaded by another user'; end if;
  delete from public.listing_images where id=current_setting('phase1.image.one')::uuid;
- if exists(select 1 from public.listing_images where id=current_setting('phase1.image.one')::uuid) then raise exception 'Owner could not delete own image'; end if;
+ get diagnostics v_deleted = row_count;
+ if v_deleted <> 1 then raise exception 'Owner could not delete own image'; end if;
 end; $assert_reorder$;
 reset role;
 rollback;
