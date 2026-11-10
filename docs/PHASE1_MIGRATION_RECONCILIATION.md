@@ -24,7 +24,10 @@ Repository branch: `obi/ezprezz-ui-refresh`
 | 20261107232813 | signup_city_and_least_privilege_catalogue_reads | Present |
 | 20261108073723 | claude_write_test | Missing |
 | 20261108073730 | claude_write_test_cleanup | Missing |
-| 20261110112813 | phase1_atomic_marketplace_operations | Present; applied 2026-11-10 |\n| 20261110113313 | seller_listing_moderation_insert_guard | Present; applied 2026-11-10 |\n| 20261110113425 | price_observation_evidence_url_insert_guard | Present; applied 2026-11-10 |
+| 20261110112813 | phase1_atomic_marketplace_operations | Present; applied 2026-11-10 |
+| 20261110113313 | seller_listing_moderation_insert_guard | Present; applied 2026-11-10 |
+| 20261110113425 | price_observation_evidence_url_insert_guard | Present; applied 2026-11-10 |
+| 20261110131040 | require_business_verification_for_public_sellers | Present; applied 2026-11-10 |
 
 GitHub history was queried for the entire `supabase/migrations` path; it returned no earlier migration commits. The 16 missing historical SQL files cannot be recovered from this repository's history.
 
@@ -35,16 +38,16 @@ GitHub history was queried for the entire `supabase/migrations` path; it returne
 - Do not apply a guessed historical baseline to the live database.
 - Preserve the existing 20261107232813 migration source.
 - Reconstruct a clearly labelled baseline/recovery sequence from a complete live-schema export, then validate it against a clean development database before treating the history as reproducible.
-- The incremental Phase 1 repair migrations are `20261110112813_phase1_atomic_marketplace_operations.sql`, `20261110113313_seller_listing_moderation_insert_guard.sql`, and `20261110113425_price_observation_evidence_url_insert_guard.sql`. They are intentionally separate from historical recovery work.
+- The four incremental Phase 1 repair migrations are `20261110112813_phase1_atomic_marketplace_operations.sql`, `20261110113313_seller_listing_moderation_insert_guard.sql`, `20261110113425_price_observation_evidence_url_insert_guard.sql`, and `20261110131040_require_business_verification_for_public_sellers.sql`. They are intentionally separate from historical recovery work.
 
 ## Current validation state
 
-- Live ledger contains 20 applied migrations: 17 historical records plus three incremental Phase 1 repairs.
-- Working branch contains one historical migration source plus all three incremental Phase 1 repair migrations.
+- Live ledger contains 21 applied migrations: 17 historical records plus four incremental Phase 1 repairs.
+- Working branch contains one historical migration source plus all four incremental Phase 1 repair migrations.
 - No historical migration rows have been modified.
-- The incremental repair migration was first executed inside a transaction and rolled back; a synthetic integration smoke test exercised the critical write paths and security restrictions without retaining fixture data.
-- The incremental repair migration was subsequently applied and recorded in the live ledger.
-- All eight dependent Edge Functions were redeployed; all nine deployed functions are active with JWT verification enabled.
-- Supabase security and health advisors report no findings.
+- The atomic marketplace operations and the seller listing, PriceCheck evidence, seller verification, and business-verification gate regression tests have been run inside transactions and rolled back; synthetic fixtures were confirmed absent afterward.
+- The business-verification regression test confirms that email- or phone-confirmed accounts remain pending and cannot pass the public verified-store gate without business review.
+- All eight dependent Edge Functions were redeployed; all nine deployed functions are active with JWT verification enabled and deployed sources match the working branch.
+- Supabase security and health advisors report no findings. Performance advisor currently reports 51 informational unused-index notices; no indexes were removed.
 - A separate clean development database has not been created. Supabase branching required paid-plan access, and creating a second project requested cost confirmation; neither was used for this free-route validation.
-- Rollback-safe tests are preserved at `supabase/tests/phase1_atomic_marketplace_operations.test.sql`, `supabase/tests/seller_listing_moderation_policy.test.sql`, `supabase/tests/price_observation_evidence_policy.test.sql`, and `supabase/tests/seller_verification_submission_policy.test.sql`. They cover atomic moderation, contact throttling, seller listing review enforcement, safe PriceCheck evidence submissions, and seller verification evidence submission. The seller and PriceCheck UI payloads now rely on database-controlled pending defaults instead of attempting to set protected review-state columns.
+- Rollback-safe tests are preserved at `supabase/tests/phase1_atomic_marketplace_operations.test.sql`, `supabase/tests/seller_listing_moderation_policy.test.sql`, `supabase/tests/price_observation_evidence_policy.test.sql`, `supabase/tests/seller_verification_submission_policy.test.sql`, and `supabase/tests/business_verification_gate.test.sql`. They cover atomic moderation, contact throttling, seller listing review enforcement, safe PriceCheck evidence submissions, seller verification evidence submission, and the requirement for administrator-approved business verification.
