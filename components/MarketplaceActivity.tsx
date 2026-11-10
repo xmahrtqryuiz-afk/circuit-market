@@ -63,7 +63,8 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     const listingIds = [...new Set(nextDeals.map(d => d.listing_id))];
     if (listingIds.length) {
       const listingResult = await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label").in("id", listingIds);
-      if (!listingResult.error) setListings(Object.fromEntries(((listingResult.data ?? []) as Listing[]).map(l => [l.id, l])));\n      else { setListings({}); setError(listingResult.error.message); }
+      if (!listingResult.error) setListings(Object.fromEntries(((listingResult.data ?? []) as Listing[]).map(l => [l.id, l])));
+      else { setListings({}); setError(listingResult.error.message); }
     } else setListings({});
     const dealIds = nextDeals.filter(d => d.buyer_id === user.id && d.deal_status === "confirmed").map(d => d.id);
     if (dealIds.length) {
@@ -72,6 +73,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
       if (!reviewResult.error) setReviews((reviewResult.data ?? []) as Review[]);
       else setReviews([]);
     } else setReviews([]);
+    setLoading(false);
   }, [user]);
 
   useEffect(() => { void loadActivity(); }, [loadActivity]);
