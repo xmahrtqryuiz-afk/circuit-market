@@ -128,3 +128,4 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 - `components/MarketplaceActivity.tsx` now loads compatibility candidates from the active product catalogue, reports seller deal confirmation only after an eligible row is updated, clears the activity loading state after successful reads, and safely clears the confirmation busy state after request failures.
 - Live database review confirms 30 public tables with RLS enabled, 54 public RLS policies, and nine public functions. The security-definer moderation/RPC functions are restricted to `service_role` (or `postgres`); no client execution grants were found for the protected functions.
 - The current Supabase performance advisor reports 46 informational unused-index notices; no indexes were removed.
+- Product request submission persists the database-generated request ID and timestamp in the seller's request tracker rather than using a temporary client-generated identifier.
