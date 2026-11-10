@@ -14,7 +14,7 @@ import type { User } from "@supabase/supabase-js";
 type Category = { id: string; name: string; slug: string };
 type Product = {
   id: string; productId: string; name: string; brand: string | null; model: string | null; category: string; variant: string; condition: string;
-  price: number; seller: string; storeId: string; area: string; city: string; description: string; imageUrl: string | null; imageAlt: string;
+  price: number; seller: string; storeId: string; area: string; city: string; description: string; imageUrl: string | null; imageAlt: string; images: { url: string; alt: string }[];
 };
 type CompatibilityLink = { id: string; compatibility_type: string; notes: string | null; otherProductName: string; direction: "outgoing" | "incoming" };
 type PriceRange = {
@@ -33,6 +33,7 @@ export default function Home() {
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,17 +83,17 @@ export default function Home() {
         const productMap = new Map((prodRes.data ?? []).map(x => [x.id, x]));
         const storeMap = new Map((storeRes.data ?? []).map(x => [x.id, x]));
         const catMap = new Map((catRes.data ?? []).map(x => [x.id, x.name]));
-        const imageMap = new Map<string, { url: string; alt: string }>();
+        const imageMap = new Map<string, { url: string; alt: string }[]>();
         for (const image of imageRes.data ?? []) {
-          if (!imageMap.has(image.listing_id)) {
-            const publicUrl = supabase.storage.from("listing-images").getPublicUrl(image.storage_path).data.publicUrl;
-            imageMap.set(image.listing_id, { url: publicUrl, alt: image.alt_text || "Product photo" });
-          }
+          const publicUrl = supabase.storage.from("listing-images").getPublicUrl(image.storage_path).data.publicUrl;
+          const listingImages = imageMap.get(image.listing_id) ?? [];
+          listingImages.push({ url: publicUrl, alt: image.alt_text || "Product photo" });
+          imageMap.set(image.listing_id, listingImages);
         }
         const mapped: Product[] = listings.flatMap(row => {
           const p = productMap.get(row.product_id); const s = storeMap.get(row.seller_store_id);
           if (!p || !s) return [];
-          return [{ id: row.id, productId: row.product_id, name: p.name, brand: p.brand ?? null, model: p.model ?? null, category: catMap.get(p.category_id) ?? "Electronics", variant: row.variant_label || "", condition: row.item_condition, price: Number(row.asking_price), seller: s.store_name, storeId: row.seller_store_id, area: row.area || s.area || "", city: row.city || s.city, description: row.notes || p.description || "Seller listing. Confirm availability and specifications with the seller.", imageUrl: imageMap.get(row.id)?.url ?? null, imageAlt: imageMap.get(row.id)?.alt ?? p.name }];
+          return [{ id: row.id, productId: row.product_id, name: p.name, brand: p.brand ?? null, model: p.model ?? null, category: catMap.get(p.category_id) ?? "Electronics", variant: row.variant_label || "", condition: row.item_condition, price: Number(row.asking_price), seller: s.store_name, storeId: row.seller_store_id, area: row.area || s.area || "", city: row.city || s.city, description: row.notes || p.description || "Seller listing. Confirm availability and specifications with the seller.", imageUrl: imageMap.get(row.id)?.[0]?.url ?? null, imageAlt: imageMap.get(row.id)?.[0]?.alt ?? p.name, images: imageMap.get(row.id) ?? [] }];
         });
         if (!alive) return;
         setCategories(catRes.data ?? []); setProducts(mapped); setRanges(publishedRanges); setCatalogueProductNames(Object.fromEntries((prodRes.data ?? []).map(x => [x.id, x.name])));
@@ -106,6 +107,7 @@ export default function Home() {
 
   useEffect(() => {
     setReportOpen(false);
+    setSelectedImageIndex(0);
     setReportDetails("");
     setReportError("");
     setReportMessage("");
@@ -220,10 +222,17 @@ export default function Home() {
     if (!user) { setReportError("Please sign in before submitting a report."); return; }
     if (!supabase) { setReportError("Reporting is temporarily unavailable."); return; }
     setReportBusy(true); setReportError(""); setReportMessage("");
-    const { error: insertError } = await supabase.from("user_reports").insert({ reporter_id: user.id, target_type: "listing", target_id: selected.id, reason: reportReason, details: reportDetails.trim() || null });
-    if (insertError) setReportError(insertError.message);
-    else { setReportMessage("Thank you. Your report has been sent to the moderation team."); setReportDetails(""); setReportOpen(false); }
-    setReportBusy(false);
+    try {
+      const { error: insertError } = await supabase.from("user_reports").insert({ reporter_id: user.id, target_type: "listing", target_id: selected.id, reason: reportReason, details: reportDetails.trim() || null });
+      if (insertError) throw insertError;
+      setReportMessage("Thank you. Your report has been sent to the moderation team.");
+      setReportDetails("");
+      setReportOpen(false);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Your report could not be submitted. Please try again.");
+    } finally {
+      setReportBusy(false);
+    }
   }
 
   const activityProducts = useMemo(() => Array.from(new Map(products.map(p => [p.productId, { productId: p.productId, name: p.name, brand: p.brand, model: p.model }])).values()), [products]);
@@ -248,7 +257,8 @@ export default function Home() {
     {!loading && tab === "My Activity" && <MarketplaceActivity user={user} products={activityProducts}/>}
     <AdminDashboard user={user} active={tab === "Admin"} onAccessChange={setAdminAccess} categories={categories}/>
     <footer><a className="brand" href="#" aria-label={`${brand.name} home`}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><p>Built for electronics buyers and sellers in Nigeria.</p><small>EZPREZZ · Live catalogue connection</small></footer>
-    {selected && <div className="modalback" onClick={() => {setSelected(null); setContactError(""); setUnlockedContact(null);}}><div ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="product-detail-title" tabIndex={-1} onClick={e=>e.stopPropagation()}><button ref={closeButtonRef} className="close" type="button" aria-label="Close product details" onClick={()=>{setSelected(null); setContactError(""); setUnlockedContact(null);}}>×</button><div className="productvisual large">{selected.imageUrl ? <img src={selected.imageUrl} alt={selected.imageAlt} /> : "▣"}</div><div className="eyebrow">{selected.category}</div><h2 id="product-detail-title">{selected.name}</h2>{(selected.brand || selected.model) && <p className="productidentity detailidentity">{[selected.brand, selected.model].filter(Boolean).join(" · ")}</p>}<p className="muted">{[selected.variant, selected.condition.replaceAll("_", " ")].filter(Boolean).join(" · ")}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p>{(compatibilityLoading || compatibilityLinks.length > 0) && <div className="compatibility-summary"><h3>Verified compatibility</h3>{compatibilityLoading ? <p className="muted">Checking approved compatibility information…</p> : compatibilityLinks.map(link => <div className="compatibility-row" key={link.id}><b>{link.direction === "outgoing" ? "This product relates to" : "Related to this product"}: {link.otherProductName}</b><span>{link.compatibility_type.replaceAll("_", " ")}</span>{link.notes && <small>{link.notes}</small>}</div>)}</div>}<div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><div className="contact-actions"><button className="primary" disabled={contactBusy} onClick={()=>unlockSellerContact("phone")}>{contactBusy ? "Please wait…" : "Unlock phone"}</button><button className="secondary-action" disabled={contactBusy} onClick={()=>unlockSellerContact("whatsapp")}>Unlock WhatsApp</button></div>{contactError && <p className="account-error" role="alert">{contactError}</p>}{unlockedContact && <div className="unlocked-contact"><b>{unlockedContact.channel === "phone" ? "Seller phone" : "Seller WhatsApp"}</b><a href={unlockedContact.channel === "phone" ? `tel:${unlockedContact.contact}` : `https://wa.me/${unlockedContact.contact.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{unlockedContact.contact}</a></div>}<div className="listing-engagement"><h3>Purchase confirmation</h3><p className="muted">Confirm your purchase interest. This is not a payment or delivery booking; the seller must also confirm the deal.</p><button className="primary full" onClick={startDealConfirmation} disabled={dealBusy}>{dealBusy ? "Please wait…" : "Confirm purchase interest"}</button>{dealMessage && <p className="account-status" role="status">{dealMessage}</p>}</div><div className="listing-engagement"><button className="textbutton" type="button" onClick={()=>{setReportOpen(!reportOpen);setReportError("");setReportMessage("");}}> {reportOpen ? "Cancel report" : "Report this listing"} </button>{reportOpen && <form className="activity-form" onSubmit={submitListingReport}><label>Reason<select value={reportReason} onChange={e=>setReportReason(e.target.value)}><option value="misleading_listing">Misleading listing</option><option value="suspected_scam">Suspected scam</option><option value="incorrect_information">Incorrect information</option><option value="prohibited_item">Prohibited or unsafe item</option><option value="other">Other</option></select></label><label>Details (optional)<textarea rows={3} maxLength={1000} value={reportDetails} onChange={e=>setReportDetails(e.target.value)} placeholder="Describe the concern clearly." /></label><button className="secondary-action" type="submit" disabled={reportBusy}>{reportBusy ? "Sending…" : "Submit report"}</button>{reportError && <p className="account-error" role="alert">{reportError}</p>}</form>}{reportMessage && <p className="account-status" role="status">{reportMessage}</p>}</div><button className="secondary-action full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
+    {selected && <div className="modalback" onClick={() => {setSelected(null); setContactError(""); setUnlockedContact(null);}}><div ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="product-detail-title" tabIndex={-1} onClick={e=>e.stopPropagation()}><button ref={closeButtonRef} className="close" type="button" aria-label="Close product details" onClick={()=>{setSelected(null); setContactError(""); setUnlockedContact(null);}}>×</button><div className="productvisual large">{selected.images.length ? <img src={selected.images[selectedImageIndex]?.url ?? selected.images[0].url} alt={selected.images[selectedImageIndex]?.alt ?? selected.imageAlt} /> : "▣"}</div>
+      {selected.images.length > 1 && <div className="product-gallery-thumbs" aria-label="More product photos">{selected.images.map((photo, index) => <button key={photo.url} type="button" className={selectedImageIndex === index ? "selected" : ""} aria-label={`View product photo ${index + 1}`} aria-pressed={selectedImageIndex === index} onClick={() => setSelectedImageIndex(index)}><img src={photo.url} alt="" loading="lazy" /></button>)}</div>}<div className="eyebrow">{selected.category}</div><h2 id="product-detail-title">{selected.name}</h2>{(selected.brand || selected.model) && <p className="productidentity detailidentity">{[selected.brand, selected.model].filter(Boolean).join(" · ")}</p>}<p className="muted">{[selected.variant, selected.condition.replaceAll("_", " ")].filter(Boolean).join(" · ")}</p><div className="detailprice">{money(selected.price)}</div><span className="tag asking">Seller asking price · Not independently verified</span><p>{selected.description}</p>{(compatibilityLoading || compatibilityLinks.length > 0) && <div className="compatibility-summary"><h3>Verified compatibility</h3>{compatibilityLoading ? <p className="muted">Checking approved compatibility information…</p> : compatibilityLinks.map(link => <div className="compatibility-row" key={link.id}><b>{link.direction === "outgoing" ? "This product relates to" : "Related to this product"}: {link.otherProductName}</b><span>{link.compatibility_type.replaceAll("_", " ")}</span>{link.notes && <small>{link.notes}</small>}</div>)}</div>}<div className="sellerbox"><b>{selected.seller}</b><span>{selected.area ? `${selected.area}, ` : ""}{selected.city}</span></div><div className="contact-actions"><button className="primary" disabled={contactBusy} onClick={()=>unlockSellerContact("phone")}>{contactBusy ? "Please wait…" : "Unlock phone"}</button><button className="secondary-action" disabled={contactBusy} onClick={()=>unlockSellerContact("whatsapp")}>Unlock WhatsApp</button></div>{contactError && <p className="account-error" role="alert">{contactError}</p>}{unlockedContact && <div className="unlocked-contact"><b>{unlockedContact.channel === "phone" ? "Seller phone" : "Seller WhatsApp"}</b><a href={unlockedContact.channel === "phone" ? `tel:${unlockedContact.contact}` : `https://wa.me/${unlockedContact.contact.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{unlockedContact.contact}</a></div>}<div className="listing-engagement"><h3>Purchase confirmation</h3><p className="muted">Confirm your purchase interest. This is not a payment or delivery booking; the seller must also confirm the deal.</p><button className="primary full" onClick={startDealConfirmation} disabled={dealBusy}>{dealBusy ? "Please wait…" : "Confirm purchase interest"}</button>{dealMessage && <p className="account-status" role="status">{dealMessage}</p>}</div><div className="listing-engagement"><button className="textbutton" type="button" onClick={()=>{setReportOpen(!reportOpen);setReportError("");setReportMessage("");}}> {reportOpen ? "Cancel report" : "Report this listing"} </button>{reportOpen && <form className="activity-form" onSubmit={submitListingReport}><label>Reason<select value={reportReason} onChange={e=>setReportReason(e.target.value)}><option value="misleading_listing">Misleading listing</option><option value="suspected_scam">Suspected scam</option><option value="incorrect_information">Incorrect information</option><option value="prohibited_item">Prohibited or unsafe item</option><option value="other">Other</option></select></label><label>Details (optional)<textarea rows={3} maxLength={1000} value={reportDetails} onChange={e=>setReportDetails(e.target.value)} placeholder="Describe the concern clearly." /></label><button className="secondary-action" type="submit" disabled={reportBusy}>{reportBusy ? "Sending…" : "Submit report"}</button>{reportError && <p className="account-error" role="alert">{reportError}</p>}</form>}{reportMessage && <p className="account-status" role="status">{reportMessage}</p>}</div><button className="secondary-action full" onClick={()=>setSelected(null)}>Close details</button></div></div>}
   </main>;
 }
 
