@@ -1,6 +1,6 @@
 # EZPREZZ Development Handoff
 
-Last reviewed: 2026-11-07
+Last reviewed: 2026-11-10
 
 ## Purpose
 
@@ -12,7 +12,7 @@ This is the existing EZPREZZ application. All work extends this repository and i
 - Production branch: `main`
 - Current isolated working branch: `obi/ezprezz-ui-refresh` (existing branch; do not create additional branches)
 - Supabase project ref: `qeebnqbzfxinawehwmzc`
-- Vercel project: existing `express` project
+- Vercel project: existing `express` project (current deployment/project access still needs verification)
 - Brand config: `config/brand.ts`
 
 The working branch is a development workspace for the same app, not a second application. Changes must ultimately be reviewed as part of the canonical `main` application. No production merge or release without CEO approval.
@@ -25,6 +25,7 @@ The working branch is a development workspace for the same app, not a second app
 - `components/AccountAccess.tsx`: email sign-up, sign-in and sign-out.
 - `components/SellerWorkspace.tsx`: seller store onboarding, private contact settings, listing submission, inventory status and product requests.
 - `components/PriceContribution.tsx`: signed-in price observation submission and contributor history.
+- `components/AdminDashboard.tsx`: protected moderation dashboard.
 - `config/brand.ts`: customer-facing brand identity and theme values.
 - `lib/supabase.ts`: browser Supabase client using the existing project URL and public publishable/anon key.
 
@@ -33,26 +34,26 @@ Do not replace the Supabase client or project configuration as part of a visual 
 ## Implemented frontend capabilities
 
 ### Public marketplace
+
 - Reads active categories, approved active listings, active products, verified public store names/locations and published PriceCheck snapshots.
 - Supports search, category filtering, listing detail and empty/loading/error states.
 - Seller asking prices remain distinct from reviewed PriceCheck market ranges.
+- Buyer phone/WhatsApp contact is returned only by the protected contact-unlock Edge Function.
 
-### Accounts and buyer contact
+### Accounts and seller workflows
+
 - Email/password sign-up, sign-in and sign-out are connected to the existing Supabase Auth tenant.
-- Listing details offer phone and WhatsApp contact unlock through the deployed `unlock-seller-contact` Edge Function.
-- The browser never queries the private seller contact table for public buyer contact.
-- Contact unlock still depends on the existing JWT, verified-store, approved-listing and rate-limit checks.
-
-### Seller workspace
 - Authenticated sellers can register a store, update its public profile and save phone/WhatsApp values in the private `seller_store_contacts` table.
 - Sellers can submit listings for review against active catalogue products, with up to five JPG/PNG/WebP photos (5 MB each) uploaded to the existing listing-images bucket.
 - Sellers can edit listing details and deactivate their own listings; the database trigger retains existing price-flag and moderation checks.
-- Sellers can view their listing status and recent product request statuses.
+- Sellers can view listing status and recent product request statuses.
 - Sellers can request missing catalogue products; requests remain pending until the existing admin process accepts or rejects them.
 - Sellers can submit business verification documents to the existing private verification-documents bucket; only authorised reviewers receive short-lived signed review links.
-- Listings are not represented as public/approved merely because the seller submitted them.
+- Email/phone account confirmation records the account verification level but does not approve the seller's business. Stores remain pending until an authorised administrator approves business evidence.
+- If a business verification submission is rejected, the seller can submit fresh evidence; the store returns to the pending moderation queue.
 
 ### PriceCheck
+
 - Public visitors see published snapshots only.
 - Signed-in contributors can submit a price observation with product, variant, condition, amount, location, source details and optional public evidence URL.
 - Contributors can attach a private JPG/PNG/WebP/PDF evidence file (10 MB maximum) or an optional public evidence URL.
@@ -61,19 +62,23 @@ Do not replace the Supabase client or project configuration as part of a visual 
 
 ## Backend foundation and real data status
 
-The existing Supabase project has 14 deployed migrations, RLS enabled on public tables, and active Edge Functions for contact unlock and administrative review/moderation.
-
-At the latest audit, core catalogue and marketplace tables were empty: `products`, `listings`, `seller_stores`, `profiles`, `listing_images`, `price_observations`, and `price_range_snapshots`. Empty states are therefore expected. Never insert invented products, listings, seller identities, observations or prices to make screens look populated.
+- The live Supabase migration ledger contains 22 applied migrations. Only one of the 17 historical migration source files is present in the working branch; five incremental Phase 1 repair migrations are present and applied. See `docs/PHASE1_MIGRATION_RECONCILIATION.md`.
+- RLS is enabled on all audited public tables.
+- Nine Edge Functions are active with JWT verification enabled; all deployed function sources were checked against the working branch.
+- Security and health advisors report no findings. Performance advisor reports informational unused-index notices; no indexes were removed.
+- The first administrator role has not been assigned. The live project has no auth users or `admin_user_roles` assignments at the latest verified check. Do not invent an account identity or create a public bootstrap path.
+- Do not insert invented products, listings, seller identities, observations or prices to make screens look populated.
 
 ## Remaining frontend and integration work
 
 - Listing image ordering/removal UI and richer inventory filters.
-- Seller verification evidence review and upload retry/status polish.
-- Build and real-session testing of report and compatibility moderation queues.
-- Product request status/history for the requester.
-- Admin dashboard and role-gated review queues for stores, listings, product requests, price observations, reports and compatibility.
-- Secure first-admin bootstrap. The first `super_admin` role has not been assigned; never expose service-role credentials or create a public bootstrap path.
-- End-to-end testing with real buyer, seller and administrator sessions.
+- Seller verification upload retry/status polish and explicit resubmission feedback.
+- User-facing report submission and product compatibility contribution flows; the administrator queues exist, but these contributor workflows are not yet present in the current page UI.
+- Deal confirmation and marketplace review buyer/seller flows need end-to-end integration and validation.
+- Product request status/history polish for the requester.
+- Admin dashboard real-session testing and secure first-admin bootstrap.
+- Buyer, seller, contributor and administrator end-to-end testing with real sessions.
+- Responsive and accessibility QA across the full marketplace workflows.
 
 ## Design integration contract
 
@@ -83,6 +88,7 @@ Design work should refine the implemented workflows rather than create a second 
 3. Seller onboarding, verification status, store profile, listing create/edit, image management and inventory states.
 4. PriceCheck contribution, evidence, submission confirmation and review status.
 5. Admin dashboard, moderation queues, decisions and role-restricted states.
+6. Report, compatibility, deal confirmation and review workflows as they are implemented.
 
 All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configuration and existing visual tokens unless a formally approved brand update is supplied.
 
@@ -100,24 +106,21 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 
 ## Verification and release gates
 
-The current work has been committed to the existing working branch and verified by re-reading the changed GitHub files. A local dependency install/build and end-to-end tests have not yet been run; Vercel preview access remains unverified. Do not describe the frontend as production-ready until:
-1. TypeScript/build and lint checks pass.
-2. Buyer, seller and contributor flows pass with real sessions.
-3. RLS and private contact/evidence boundaries are verified.
-4. Admin workflows and first-admin bootstrap are tested securely.
-5. Responsive and accessibility QA is complete.
-6. The CEO reviews and explicitly approves release.
+- The Next.js production build and Edge Function type checks passed in the last recorded Phase 1 CI run. The newest commits still need a fresh CI result; the current GitHub status check only reports a pending Vercel check.
+- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating and rejected-store resubmission. Test fixtures were confirmed absent after execution.
+- A clean development database has not been created because the free route does not provide the required isolated database/branch.
+- Vercel preview deployment is not yet verified.
+- Phase 1 is not complete until migration history is reproducible from a clean database, latest CI/build is green, real-session buyer/seller/admin workflows pass, Vercel preview is verified, and security/accessibility/release checks pass.
+- The CEO must review and explicitly approve any merge to `main` or production release.
 
 ## Admin moderation dashboard (development branch)
 
-- The existing Supabase project now has an `admin-dashboard` Edge Function with JWT verification enabled.
+- The existing Supabase project has an `admin-dashboard` Edge Function with JWT verification enabled.
 - It verifies the caller with Supabase Auth, reads the caller's roles from `admin_user_roles` server-side, and returns only queues allowed by those roles.
-- Pending queues include stores, listings, PriceCheck observations and product requests; each queue is capped at 50 records per request.
+- Pending queues include stores, listings, PriceCheck observations, product requests, reports and compatibility; each queue is capped at 50 records per request.
 - The browser never reads `admin_user_roles` or pending moderation tables directly. Existing RLS restrictions remain unchanged.
 - The dashboard UI is permission-aware and includes store verification, listing moderation (including explicit price-flag override confirmation), PriceCheck review, product request acceptance/rejection, user-report triage and product-compatibility review.
 - The endpoint excludes private seller phone/WhatsApp data. Pending business verification evidence is exposed only as a five-minute signed URL to an authenticated administrator.
 - The frontend uses the existing review Edge Functions for decisions; these retain their own role checks, self-review restrictions and audit logging.
 - Business verification approval is disabled until a pending business evidence document is available.
-- Admin UI and endpoint are in the existing working branch. The Edge Function has been deployed to the existing Supabase project (version 2).
-
-Admin dashboard build and real administrator-session testing are still outstanding. No administrator roles have been granted as part of this work.
+- No administrator roles have been granted. First-admin bootstrap remains a controlled release prerequisite.
