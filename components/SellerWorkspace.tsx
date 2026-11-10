@@ -352,7 +352,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     } finally { setBusy(false); }
   }
 
-  const visibleCatalogue = catalogue.filter(product => [product.name, product.brand, product.model].filter(Boolean).join(" ").toLowerCase().includes(catalogueSearch.trim().toLowerCase()));
+  const visibleCatalogue = catalogue.filter(product => product.id === listingForm.product_id || [product.name, product.brand, product.model].filter(Boolean).join(" ").toLowerCase().includes(catalogueSearch.trim().toLowerCase()));
 
   const visibleOwnListings = ownListings.filter(item => {
     if (listingFilter === "active") return item.is_active;
