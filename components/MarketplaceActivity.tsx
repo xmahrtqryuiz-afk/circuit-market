@@ -49,38 +49,48 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
       setCompatPart(""); setCompatTarget(""); setCompatType("fits"); setCompatNotes("");
       setMessage(""); setError("");
     }
-    if (!supabase || !user) { setDeals([]); setStores([]); setListings({}); setReviews([]); setLoading(false); return; }
-    setLoading(true); setError("");
-    const storeResult = await supabase.from("seller_stores").select("id,store_name,owner_id").eq("owner_id", user.id);
-    if (storeResult.error) { setError(storeResult.error.message); setLoading(false); return; }
-    const ownStores = (storeResult.data ?? []) as Store[];
-    const storeIds = ownStores.map(s => s.id);
-    let dealQuery = supabase.from("deal_confirmations")
-      .select("id,listing_id,store_id,buyer_id,buyer_confirmed_at,seller_confirmed_at,deal_status,created_at")
-      .order("created_at", { ascending: false }).limit(100);
-    dealQuery = storeIds.length
-      ? dealQuery.or(`buyer_id.eq.${user.id},store_id.in.(${storeIds.join(",")})`)
-      : dealQuery.eq("buyer_id", user.id);
-    const dealResult = await dealQuery;
-    if (dealResult.error) { setError(dealResult.error.message); setLoading(false); return; }
-    const nextDeals = (dealResult.data ?? []) as Deal[];
-    setDeals(nextDeals);
-    const listingIds = [...new Set(nextDeals.map(d => d.listing_id))];
-    if (listingIds.length) {
-      const listingResult = await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label").in("id", listingIds);
-      if (!listingResult.error) setListings(Object.fromEntries(((listingResult.data ?? []) as Listing[]).map(l => [l.id, l])));
-      else { setListings({}); setError(listingResult.error.message); }
-    } else setListings({});
-    const dealIds = nextDeals.filter(d => d.buyer_id === user.id && d.deal_status === "confirmed").map(d => d.id);
-    if (dealIds.length) {
-      const reviewResult = await supabase.from("marketplace_reviews")
-        .select("id,deal_id,review_type,rating,review_text,review_status").in("deal_id", dealIds);
-      if (!reviewResult.error) setReviews((reviewResult.data ?? []) as Review[]);
-      else setReviews([]);
-    } else setReviews([]);
-    setLoading(false);
+    if (!supabase || !user) {
+      setDeals([]); setStores([]); setListings({}); setReviews([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const storeResult = await supabase.from("seller_stores").select("id,store_name,owner_id").eq("owner_id", user.id);
+      if (storeResult.error) throw storeResult.error;
+      const ownStores = (storeResult.data ?? []) as Store[];
+      const storeIds = ownStores.map(store => store.id);
+      let dealQuery = supabase.from("deal_confirmations")
+        .select("id,listing_id,store_id,buyer_id,buyer_confirmed_at,seller_confirmed_at,deal_status,created_at")
+        .order("created_at", { ascending: false }).limit(100);
+      dealQuery = storeIds.length
+        ? dealQuery.or(`buyer_id.eq.${user.id},store_id.in.(${storeIds.join(",")})`)
+        : dealQuery.eq("buyer_id", user.id);
+      const dealResult = await dealQuery;
+      if (dealResult.error) throw dealResult.error;
+      const nextDeals = (dealResult.data ?? []) as Deal[];
+      const listingIds = [...new Set(nextDeals.map(deal => deal.listing_id))];
+      const listingResult = listingIds.length
+        ? await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label").in("id", listingIds)
+        : { data: [], error: null };
+      if (listingResult.error) throw listingResult.error;
+      const nextListings = Object.fromEntries(((listingResult.data ?? []) as Listing[]).map(listing => [listing.id, listing]));
+      const dealIds = nextDeals.filter(deal => deal.buyer_id === user.id && deal.deal_status === "confirmed").map(deal => deal.id);
+      const reviewResult = dealIds.length
+        ? await supabase.from("marketplace_reviews").select("id,deal_id,review_type,rating,review_text,review_status").in("deal_id", dealIds)
+        : { data: [], error: null };
+      if (reviewResult.error) throw reviewResult.error;
+      setStores(ownStores);
+      setDeals(nextDeals);
+      setListings(nextListings);
+      setReviews((reviewResult.data ?? []) as Review[]);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Your marketplace activity could not be loaded. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
-
   useEffect(() => { void loadActivity(); }, [loadActivity]);
 
   useEffect(() => {

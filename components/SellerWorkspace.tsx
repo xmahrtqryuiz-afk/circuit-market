@@ -28,6 +28,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   const [catalogue, setCatalogue] = useState<CatalogueProduct[]>([]);
   const [catalogueSearch, setCatalogueSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [workspaceReloadKey, setWorkspaceReloadKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -100,7 +101,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     }
     loadWorkspace();
     return () => { active = false; };
-  }, [user]);
+  }, [user, workspaceReloadKey]);
 
   async function saveStore(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -370,6 +371,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   return <div className="seller-workspace">
     {error && <p className="account-error" role="alert">{error}</p>}
     {message && <p className="seller-success" role="status">{message}</p>}
+    <div className="seller-workspace-toolbar"><span className="muted">Refresh to check updated listing, verification and product-request statuses.</span><button className="filter-reset" type="button" onClick={() => setWorkspaceReloadKey(value => value + 1)} disabled={loading}>Refresh workspace</button></div>
     <section className="formcard">
       <div className="eyebrow">SELLER PROFILE</div>
       <h3>{store ? "Your store" : "Register your store"}</h3>
