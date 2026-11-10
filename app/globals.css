@@ -622,3 +622,16 @@ textarea:disabled {
 @media (max-width: 640px) {
   .product-gallery-thumbs button { flex-basis: 60px; width: 60px; height: 60px; }
 }
+
+
+.load-more-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0 8px;
+}
+.load-more-wrap .secondary-action {
+  min-width: min(100%, 220px);
+  min-height: 46px;
+}
