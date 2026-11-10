@@ -129,3 +129,11 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 - Live database review confirms 30 public tables with RLS enabled, 54 public RLS policies, and nine public functions. The security-definer moderation/RPC functions are restricted to `service_role` (or `postgres`); no client execution grants were found for the protected functions.
 - The current Supabase performance advisor reports 46 informational unused-index notices; no indexes were removed.
 - Product request submission persists the database-generated request ID and timestamp in the seller's request tracker rather than using a temporary client-generated identifier.
+
+## Latest database ACL boundary check (2026-11-10)
+
+- A fresh catalog query counted 30 public base tables, 163 constraints, 111 public indexes, 54 public RLS policies, eight non-internal public-table triggers, and 26 functions across the `public` and `private` schemas.
+- Security and health advisors returned no findings. Performance advisor still reports 46 informational unused-index notices; these are not treated as safe-to-drop without workload evidence.
+- All nine public SECURITY DEFINER RPCs are restricted to `service_role` (plus the database owner); `anon` and `authenticated` cannot execute them.
+- Private-schema helper functions used by RLS have execute grants to `anon` and/or `authenticated`, and those roles have `USAGE` on the `private` schema. The PostgREST exposed-schema configuration was not readable from SQL in this audit. Do not revoke these grants blindly because RLS policies may depend on them. Before release, verify in Supabase API settings that `private` is not an exposed PostgREST schema; if it is exposed, review the helper surface and adjust exposure/grants without breaking policy execution.
+- The live project currently has zero Auth users and zero administrator role assignments. Real administrator workflow testing and first-admin bootstrap remain blocked on the CEO providing/creating the intended account identity through the normal controlled process.
