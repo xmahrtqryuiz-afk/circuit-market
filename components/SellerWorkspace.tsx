@@ -10,6 +10,7 @@ type CatalogueProduct = { id: string; name: string; brand: string | null; model:
 type SellerListing = { id: string; product_id: string; product_name: string; asking_price: number; item_condition: string; variant_label: string | null; quantity: number; city: string; area: string | null; notes: string | null; is_active: boolean; moderation_status: string; created_at: string };
 type ProductRequest = { id: string; requested_name: string; brand: string | null; model: string | null; request_status: string; created_at: string };
 type VerificationRecord = { id: string; verification_type: string; verification_status: string; created_at: string };
+type SellerImage = { id: string; listing_id: string; storage_path: string; alt_text: string | null; sort_order: number; image_review_status: string };
 
 const conditions = ["new", "used", "refurbished", "new_aftermarket", "used_salvaged"];
 const productTypes = ["finished_product", "spare_part", "component", "tool", "accessory"];
@@ -19,6 +20,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   const [ownListings, setOwnListings] = useState<SellerListing[]>([]);
   const [ownRequests, setOwnRequests] = useState<ProductRequest[]>([]);
   const [verificationRecords, setVerificationRecords] = useState<VerificationRecord[]>([]);
+  const [imagesByListing, setImagesByListing] = useState<Record<string, SellerImage[]>>({});
   const [editingId, setEditingId] = useState("");
   const [editForm, setEditForm] = useState({ variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "", area: "", notes: "" });
   const [catalogue, setCatalogue] = useState<CatalogueProduct[]>([]);
@@ -35,7 +37,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   useEffect(() => {
     let active = true;
     async function loadWorkspace() {
-      if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); return; }
+      if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); setImagesByListing({}); return; }
       setLoading(true); setError("");
       try {
         const [storeResult, productsResult] = await Promise.all([
@@ -47,7 +49,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         if (!active) return;
         setStore(storeResult.data as Store | null);
         setCatalogue((productsResult.data ?? []) as CatalogueProduct[]);
-        if (!storeResult.data) { setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); }
+        if (!storeResult.data) { setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); setImagesByListing({}); }
         if (storeResult.data) {
           const s = storeResult.data as Store;
           const [contactResult, verificationResult] = await Promise.all([
@@ -65,10 +67,18 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           ]);
           if (listingResult.error) throw listingResult.error;
           if (requestResult.error) throw requestResult.error;
+          const listingIds = (listingResult.data ?? []).map(row => row.id);
+          const imageResult = listingIds.length
+            ? await supabase.from("listing_images").select("id,listing_id,storage_path,alt_text,sort_order,image_review_status").in("listing_id", listingIds).order("sort_order")
+            : { data: [], error: null };
+          if (imageResult.error) throw imageResult.error;
           const productNames = new Map((productsResult.data ?? []).map(p => [p.id, [p.brand, p.name, p.model].filter(Boolean).join(" ")] as const));
+          const imageMap: Record<string, SellerImage[]> = {};
+          for (const image of (imageResult.data ?? []) as SellerImage[]) (imageMap[image.listing_id] ??= []).push(image);
           if (!active) return;
           setOwnListings((listingResult.data ?? []).map(row => ({ ...row, product_name: productNames.get(row.product_id) ?? "Catalogue product" })) as SellerListing[]);
           setOwnRequests((requestResult.data ?? []) as ProductRequest[]);
+          setImagesByListing(imageMap);
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Could not load your seller workspace.");
