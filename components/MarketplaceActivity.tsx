@@ -10,7 +10,7 @@ type Deal = {
   buyer_confirmed_at: string; seller_confirmed_at: string | null;
   deal_status: "pending" | "confirmed" | "disputed" | "cancelled"; created_at: string;
 };
-type Store = { id: string; store_name: string; owner_id: string };
+type Store = { id: string; store_name: string; owner_id?: string };
 type Listing = { id: string; product_id: string; asking_price: number; item_condition: string; variant_label: string | null };
 type Review = { id: string; deal_id: string; review_type: "seller" | "product"; rating: number; review_text: string | null; review_status: string };
 
@@ -22,6 +22,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   const [listings, setListings] = useState<Record<string, Listing>>({});
   const [reviews, setReviews] = useState<Review[]>([]);
   const [busy, setBusy] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [compatPart, setCompatPart] = useState("");
@@ -34,12 +35,11 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   const storeMap = useMemo(() => new Map(stores.map(s => [s.id, s])), [stores]);
 
   const loadActivity = useCallback(async () => {
-    if (!supabase || !user) { setDeals([]); setStores([]); setListings({}); setReviews([]); return; }
-    setError("");
+    if (!supabase || !user) { setDeals([]); setStores([]); setListings({}); setReviews([]); setLoading(false); return; }
+    setLoading(true); setError("");
     const storeResult = await supabase.from("seller_stores").select("id,store_name,owner_id").eq("owner_id", user.id);
-    if (storeResult.error) { setError(storeResult.error.message); return; }
+    if (storeResult.error) { setError(storeResult.error.message); setLoading(false); return; }
     const ownStores = (storeResult.data ?? []) as Store[];
-    setStores(ownStores);
     const storeIds = ownStores.map(s => s.id);
     let dealQuery = supabase.from("deal_confirmations")
       .select("id,listing_id,store_id,buyer_id,buyer_confirmed_at,seller_confirmed_at,deal_status,created_at")
@@ -54,7 +54,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     const listingIds = [...new Set(nextDeals.map(d => d.listing_id))];
     if (listingIds.length) {
       const listingResult = await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label").in("id", listingIds);
-      if (!listingResult.error) setListings(Object.fromEntries(((listingResult.data ?? []) as Listing[]).map(l => [l.id, l])));
+      if (!listingResult.error) setListings(Object.fromEntries(((listingResult.data ?? []) as Listing[]).map(l => [l.id, l])));\n      else { setListings({}); setError(listingResult.error.message); }
     } else setListings({});
     const dealIds = nextDeals.filter(d => d.buyer_id === user.id && d.deal_status === "confirmed").map(d => d.id);
     if (dealIds.length) {
@@ -122,7 +122,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     <section className="activity-panel">
       <h3>Deal confirmations</h3>
       <p className="muted">A deal is confirmed only after the buyer and seller both confirm. This does not process payment or arrange delivery.</p>
-      {!deals.length ? <p className="empty">No deal confirmations yet. Open an approved listing and confirm your purchase interest to start one.</p> :
+      {loading ? <p className="empty">Loading your activity…</p> : !deals.length ? <p className="empty">No deal confirmations yet. Open an approved listing and confirm your purchase interest to start one.</p> :
         <div className="activity-list">{deals.map(deal => {
           const listing = listings[deal.listing_id];
           const product = listing ? productMap.get(listing.product_id) : undefined;
