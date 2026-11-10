@@ -29,7 +29,8 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   const [compatType, setCompatType] = useState("fits");
   const [compatNotes, setCompatNotes] = useState("");
 
-  const productMap = useMemo(() => new Map(products.map(p => [p.productId, p])), [products]);
+  const uniqueProducts = useMemo(() => Array.from(new Map(products.map(p => [p.productId, p])).values()), [products]);
+  const productMap = useMemo(() => new Map(uniqueProducts.map(p => [p.productId, p])), [uniqueProducts]);
   const storeMap = useMemo(() => new Map(stores.map(s => [s.id, s])), [stores]);
 
   async function loadActivity() {
@@ -88,7 +89,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     setBusy(`${deal.id}-${type}`); setError(""); setMessage("");
     const payload = {
       deal_id: deal.id, reviewer_id: user.id, review_type: type, rating,
-      review_text: reviewText || null, review_status: "pending",
+      review_text: reviewText || null,
       store_id: type === "seller" ? deal.store_id : null,
       product_id: type === "product" ? listing.product_id : null,
     };
@@ -155,9 +156,9 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     <section className="activity-panel">
       <h3>Suggest product compatibility</h3>
       <p className="muted">Help improve the catalogue by suggesting which parts fit, work with or replace another product. Suggestions remain pending until reviewed.</p>
-      {products.length < 2 ? <p className="empty">At least two active catalogue products are needed before a compatibility suggestion can be submitted.</p> :
+      {uniqueProducts.length < 2 ? <p className="empty">At least two active catalogue products are needed before a compatibility suggestion can be submitted.</p> :
         <form className="activity-form" onSubmit={submitCompatibility}>
-          <label>Part or accessory<select required value={compatPart} onChange={e => setCompatPart(e.target.value)}><option value="">Choose a product</option>{products.map(p => <option key={p.productId} value={p.productId}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
+          <label>Part or accessory<select required value={compatPart} onChange={e => setCompatPart(e.target.value)}><option value="">Choose a product</option>{uniqueProducts.map(p => <option key={p.productId} value={p.productId}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
           <label>Compatible product<select required value={compatTarget} onChange={e => setCompatTarget(e.target.value)}><option value="">Choose a product</option>{products.map(p => <option key={p.productId} value={p.productId} disabled={p.productId === compatPart}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
           <label>Relationship<select value={compatType} onChange={e => setCompatType(e.target.value)}><option value="fits">Fits</option><option value="works_with">Works with</option><option value="replacement_for">Replacement for</option><option value="not_compatible">Not compatible</option></select></label>
           <label>Evidence or notes (optional)<textarea rows={3} maxLength={1000} value={compatNotes} onChange={e => setCompatNotes(e.target.value)} placeholder="Add model numbers, version details or the basis for this suggestion." /></label>
