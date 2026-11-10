@@ -542,3 +542,11 @@ textarea:disabled {
   .listing-engagement { padding:13px; }
   .listing-engagement .secondary-action { width:100%; }
 }
+
+
+.compatibility-summary { display:flex; flex-direction:column; gap:9px; margin:16px 0; padding:14px; border:1px solid var(--line); border-radius:12px; background:#fbfcfa; }
+.compatibility-summary h3 { margin:0; color:var(--green); font:800 13px Manrope,sans-serif; }
+.compatibility-row { display:flex; flex-direction:column; gap:4px; padding-top:9px; border-top:1px solid var(--line); }
+.compatibility-row b { font-size:11px; line-height:1.45; }
+.compatibility-row span { align-self:flex-start; padding:4px 7px; border-radius:6px; background:var(--green-soft); color:var(--green); font-size:9px; font-weight:700; text-transform:capitalize; }
+.compatibility-row small { color:var(--muted); font-size:10px; line-height:1.5; }
