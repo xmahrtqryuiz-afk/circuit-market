@@ -35,7 +35,7 @@ GitHub history was queried for the entire `supabase/migrations` path; it returne
 - Do not apply a guessed historical baseline to the live database.
 - Preserve the existing 20261107232813 migration source.
 - Reconstruct a clearly labelled baseline/recovery sequence from a complete live-schema export, then validate it against a clean development database before treating the history as reproducible.
-- The incremental Phase 1 repair migration is `20261109225200_phase1_atomic_marketplace_operations.sql`. It is intentionally separate from historical recovery work.
+- The incremental Phase 1 repair migration is `20261110112813_phase1_atomic_marketplace_operations.sql`. It is intentionally separate from historical recovery work.
 
 ## Current validation state
 
