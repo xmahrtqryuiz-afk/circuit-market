@@ -29,7 +29,7 @@ Repository branch: `obi/ezprezz-ui-refresh`
 | 20261110113425 | price_observation_evidence_url_insert_guard | Present; applied 2026-11-10 |
 | 20261110131040 | require_business_verification_for_public_sellers | Present; applied 2026-11-10 |
 | 20261110131303 | reopen_rejected_store_on_business_resubmission | Present; applied 2026-11-10 |
-| 20261110131536 | secure_buyer_deal_confirmation_start | Present; applied 2026-11-10 |\n| 20261110165000 | public_compatibility_review_filter_grant | Present; applied 2026-11-10 |
+| 20261110131536 | secure_buyer_deal_confirmation_start | Present; applied 2026-11-10 |\n| 20261110160645 | public_compatibility_review_filter_grant | Present; applied 2026-11-10 |
 
 GitHub history was queried for the entire `supabase/migrations` path; it returned no earlier migration commits. The 16 missing historical SQL files cannot be recovered from this repository's history.
 
@@ -40,7 +40,7 @@ GitHub history was queried for the entire `supabase/migrations` path; it returne
 - Do not apply a guessed historical baseline to the live database.
 - Preserve the existing 20261107232813 migration source.
 - Reconstruct a clearly labelled baseline/recovery sequence from a complete live-schema export, then validate it against a clean development database before treating the history as reproducible.
-- The seven incremental Phase 1 repair migrations are `20261110112813_phase1_atomic_marketplace_operations.sql`, `20261110113313_seller_listing_moderation_insert_guard.sql`, `20261110113425_price_observation_evidence_url_insert_guard.sql`, `20261110131040_require_business_verification_for_public_sellers.sql`, `20261110131303_reopen_rejected_store_on_business_resubmission.sql`, and `20261110131536_secure_buyer_deal_confirmation_start.sql`, and `20261110165000_public_compatibility_review_filter_grant.sql`. They are intentionally separate from historical recovery work.
+- The seven incremental Phase 1 repair migrations are `20261110112813_phase1_atomic_marketplace_operations.sql`, `20261110113313_seller_listing_moderation_insert_guard.sql`, `20261110113425_price_observation_evidence_url_insert_guard.sql`, `20261110131040_require_business_verification_for_public_sellers.sql`, `20261110131303_reopen_rejected_store_on_business_resubmission.sql`, and `20261110131536_secure_buyer_deal_confirmation_start.sql`, and `20261110160645_public_compatibility_review_filter_grant.sql`. They are intentionally separate from historical recovery work.
 
 ## Current validation state
 
