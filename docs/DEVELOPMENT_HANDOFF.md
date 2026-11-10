@@ -12,7 +12,7 @@ This is the existing EZPREZZ application. All work extends this repository and i
 - Production branch: `main`
 - Current isolated working branch: `obi/ezprezz-ui-refresh` (existing branch; do not create additional branches)
 - Supabase project ref: `qeebnqbzfxinawehwmzc`
-- Vercel project: existing `express` project (current deployment/project access still needs verification)
+- Expected Vercel project: `express`; the EXPRESS team currently returns no linked projects or deployments through the connected Vercel account, so project ownership/access must be reconciled.
 - Brand config: `config/brand.ts`
 
 The working branch is a development workspace for the same app, not a second application. Changes must ultimately be reviewed as part of the canonical `main` application. No production merge or release without CEO approval.
@@ -25,7 +25,7 @@ The working branch is a development workspace for the same app, not a second app
 - `components/AccountAccess.tsx`: email sign-up, sign-in and sign-out.
 - `components/SellerWorkspace.tsx`: seller store onboarding, private contact settings, listing submission, inventory status and product requests.
 - `components/PriceContribution.tsx`: signed-in price observation submission and contributor history.
-- `components/AdminDashboard.tsx`: protected moderation dashboard.
+- `components/AdminDashboard.tsx`: protected moderation dashboard.\n- `components/MarketplaceActivity.tsx`: buyer/seller deal confirmations, verified-deal reviews and product compatibility submissions.
 - `config/brand.ts`: customer-facing brand identity and theme values.
 - `lib/supabase.ts`: browser Supabase client using the existing project URL and public publishable/anon key.
 
@@ -90,7 +90,7 @@ Design work should refine the implemented workflows rather than create a second 
 3. Seller onboarding, verification status, store profile, listing create/edit, image management and inventory states.
 4. PriceCheck contribution, evidence, submission confirmation and review status.
 5. Admin dashboard, moderation queues, decisions and role-restricted states.
-6. Report, compatibility, deal confirmation and review workflows as they are implemented.
+6. Listing reports, compatibility suggestions, mutual deal confirmations and verified-deal reviews.
 
 All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configuration and existing visual tokens unless a formally approved brand update is supplied.
 
@@ -109,7 +109,7 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 ## Verification and release gates
 
 - The Next.js production build and Edge Function type checks passed in the last recorded Phase 1 CI run. The newest commits still need a fresh CI result; the current GitHub status check only reports a pending Vercel check.
-- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, and buyer deal-confirmation access control. Test fixtures were confirmed absent after execution.
+- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, buyer deal-confirmation access control, and the reports/compatibility/deal/review contributor lifecycle. The newest contributor workflow test passed inside a transaction; a separate cleanup query is still required to reconfirm that all test fixtures were rolled back.
 - A clean development database has not been created because the free route does not provide the required isolated database/branch.
 - Vercel preview deployment is not yet verified.
 - Phase 1 is not complete until migration history is reproducible from a clean database, latest CI/build is green, real-session buyer/seller/admin workflows pass, Vercel preview is verified, and security/accessibility/release checks pass.
