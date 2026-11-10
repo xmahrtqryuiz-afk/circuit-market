@@ -32,6 +32,7 @@ begin
  values(v_store,v_product,'new',150000,'Test City',v_country,true,'approved')
  returning id into v_listing;
 
+ perform set_config('phase1.workflow.category',v_category::text,true);
  perform set_config('phase1.workflow.store',v_store::text,true);
  perform set_config('phase1.workflow.listing',v_listing::text,true);
  perform set_config('phase1.workflow.product',v_product::text,true);
@@ -42,6 +43,20 @@ $setup$;
 -- Buyer can file a report, but cannot impersonate another reporter.
 select set_config('request.jwt.claim.sub','cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd',true);
 set local role authenticated;
+
+insert into public.product_requests(requested_by,requested_name,product_type,category_id,request_status)
+values(auth.uid(),'Phase1 Product Request','finished_product',current_setting('phase1.workflow.category')::uuid,'pending');
+do $request_assert$
+begin
+ if not exists(select 1 from public.product_requests where requested_name='Phase1 Product Request' and request_status='pending') then
+  raise exception 'Seller product request was not created as pending';
+ end if;
+ begin
+  insert into public.product_requests(requested_by,requested_name,product_type,category_id,request_status)
+  values('abababab-abab-4bab-8bab-abababababab','Phase1 Spoofed Request','finished_product',current_setting('phase1.workflow.category')::uuid,'pending');
+  raise exception 'SECURITY FAILURE: product request identity was spoofed';
+ exception when insufficient_privilege then null; end;
+end; $request_assert$;
 
 insert into public.user_reports(reporter_id,target_type,target_id,reason,details)
 values('cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd','listing',current_setting('phase1.workflow.listing')::uuid,'misleading_listing','Regression test report');
