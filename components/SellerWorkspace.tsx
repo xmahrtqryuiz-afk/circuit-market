@@ -172,8 +172,10 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         const path = user.id + "/" + createdListing.id + "/" + crypto.randomUUID() + "." + extension;
         const { error: uploadError } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type, upsert: false });
         if (uploadError) { imageWarning = uploadError.message; break; }
-        const { error: imageError } = await supabase.from("listing_images").insert({ listing_id: createdListing.id, uploaded_by: user.id, storage_path: path, alt_text: selectedProduct?.name ?? "Seller listing image", sort_order: index });
+        const { data: imageRow, error: imageError } = await supabase.from("listing_images").insert({ listing_id: createdListing.id, uploaded_by: user.id, storage_path: path, alt_text: selectedProduct?.name ?? "Seller listing image", sort_order: index })
+          .select("id,listing_id,storage_path,alt_text,sort_order,image_review_status").single();
         if (imageError) { await supabase.storage.from("listing-images").remove([path]); imageWarning = imageError.message; break; }
+        setImagesByListing(previous => ({ ...previous, [createdListing.id]: [...(previous[createdListing.id] ?? []), imageRow as SellerImage] }));
         uploadedCount += 1;
       }
       setListingImages([]);
