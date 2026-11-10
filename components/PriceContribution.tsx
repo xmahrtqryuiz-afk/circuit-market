@@ -12,6 +12,7 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
   const [productSearch, setProductSearch] = useState("");
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
+  const [reportsReloadKey, setReportsReloadKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -39,7 +40,7 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
     }
     load();
     return () => { active = false; };
-  }, [user]);
+  }, [user, reportsReloadKey]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -134,7 +135,7 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
       </form> : <div className="empty">There are no active products in the catalogue yet. Request the missing product from the Sell tab; price reporting becomes available when it is added to the catalogue.<button className="textbutton" onClick={onRequestProduct}>Go to product requests →</button></div>}
     </section>
     <section className="formcard">
-      <div className="eyebrow">YOUR CONTRIBUTIONS</div><h3>Recent observations</h3>
+      <div className="contribution-heading"><div><div className="eyebrow">YOUR CONTRIBUTIONS</div><h3>Recent observations</h3></div><button className="filter-reset" type="button" onClick={() => setReportsReloadKey(value => value + 1)} disabled={loading}>Refresh</button></div>
       {reports.length ? <div className="seller-listing-list">{reports.map(report => <article className="seller-listing-row" key={report.id}><div><b>{productName(report.product_id)}</b><small>{report.item_condition.replaceAll("_", " ")} · {report.observed_on}</small></div><div className="seller-listing-meta"><strong>₦{Number(report.amount_value).toLocaleString("en-NG")}</strong><span className={"listing-status status-" + report.review_status}>{report.review_status}</span></div></article>)}</div> : <p className="muted">You have not submitted any observations yet.</p>}
     </section>
   </div>;
