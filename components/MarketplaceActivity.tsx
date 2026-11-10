@@ -95,14 +95,19 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   async function confirmSeller(deal: Deal) {
     if (!supabase || !user) return;
     setBusy(deal.id); setError(""); setMessage("");
-    const { data: updatedDeal, error: updateError } = await supabase.from("deal_confirmations")
-      .update({ seller_confirmed_at: new Date().toISOString() })
-      .eq("id", deal.id).eq("store_id", deal.store_id).eq("deal_status", "pending")
-      .select("id").maybeSingle();
-    if (updateError) setError(updateError.message);
-    else if (!updatedDeal) setError("This deal could not be confirmed. It may have already changed or your account may not own the seller store.");
-    else { setMessage("Your confirmation was recorded. The deal is confirmed when both sides have confirmed."); await loadActivity(); }
-    setBusy("");
+    try {
+      const { data: updatedDeal, error: updateError } = await supabase.from("deal_confirmations")
+        .update({ seller_confirmed_at: new Date().toISOString() })
+        .eq("id", deal.id).eq("store_id", deal.store_id).eq("deal_status", "pending")
+        .select("id").maybeSingle();
+      if (updateError) setError(updateError.message);
+      else if (!updatedDeal) setError("This deal could not be confirmed. It may have already changed or your account may not own the seller store.");
+      else { setMessage("Your confirmation was recorded. The deal is confirmed when both sides have confirmed."); await loadActivity(); }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "The deal confirmation could not be completed.");
+    } finally {
+      setBusy("");
+    }
   }
 
   async function submitReview(event: FormEvent<HTMLFormElement>, deal: Deal, type: "seller" | "product") {
