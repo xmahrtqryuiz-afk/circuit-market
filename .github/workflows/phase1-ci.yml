@@ -1,0 +1,41 @@
+name: Phase 1 build and Edge Function checks
+
+on:
+  push:
+    branches:
+      - obi/ezprezz-ui-refresh
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  web-build:
+    name: Next.js production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-package-lock
+      - name: Build web application
+        run: npm run build
+
+  edge-functions:
+    name: Supabase Edge Function type checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check deployed Edge Function sources
+        run: deno check --node-modules-dir=auto supabase/functions/*/index.ts
