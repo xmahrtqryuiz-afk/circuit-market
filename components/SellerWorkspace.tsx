@@ -334,16 +334,17 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     if (!user || !supabase) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const { error: requestError } = await supabase.from("product_requests").insert({
+      const { data: createdRequest, error: requestError } = await supabase.from("product_requests").insert({
         requested_by: user.id, requested_name: requestForm.requested_name.trim(),
         brand: requestForm.brand.trim() || null, model: requestForm.model.trim() || null,
         product_type: requestForm.product_type, category_id: requestForm.category_id || null,
         compatibility_notes: requestForm.compatibility_notes.trim() || null,
         request_status: "pending",
-      });
+      }).select("id,requested_name,brand,model,request_status,created_at").single();
       if (requestError) throw requestError;
+      if (!createdRequest) throw new Error("The product request was saved but its confirmation could not be loaded. Refresh your workspace to verify its status.");
       setRequestForm({ requested_name: "", brand: "", model: "", product_type: "finished_product", category_id: "", compatibility_notes: "" });
-      setOwnRequests(current => [{ id: crypto.randomUUID(), requested_name: requestForm.requested_name.trim(), brand: requestForm.brand.trim() || null, model: requestForm.model.trim() || null, request_status: "pending", created_at: new Date().toISOString() }, ...current]);
+      setOwnRequests(current => [createdRequest as ProductRequest, ...current]);
       setMessage("Product request submitted for catalogue review. You can create a listing after it is accepted.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Product request could not be submitted.");
