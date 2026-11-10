@@ -30,11 +30,16 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   const [compatTarget, setCompatTarget] = useState("");
   const [compatType, setCompatType] = useState("fits");
   const [compatNotes, setCompatNotes] = useState("");
+  const [compatibilitySearch, setCompatibilitySearch] = useState("");
   const [catalogueProducts, setCatalogueProducts] = useState<ProductOption[]>(products);
 
   const uniqueProducts = useMemo(() => Array.from(new Map(catalogueProducts.map(p => [p.productId, p])).values()), [catalogueProducts]);
   const productMap = useMemo(() => new Map(uniqueProducts.map(p => [p.productId, p])), [uniqueProducts]);
   const storeMap = useMemo(() => new Map(stores.map(s => [s.id, s])), [stores]);
+  const visibleCompatibilityProducts = uniqueProducts.filter(product => {
+    if (product.productId === compatPart || product.productId === compatTarget) return true;
+    return [product.name, product.brand, product.model].filter(Boolean).join(" ").toLowerCase().includes(compatibilitySearch.trim().toLowerCase());
+  });
 
   const loadActivity = useCallback(async () => {
     const nextUserId = user?.id ?? null;
@@ -82,7 +87,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     let active = true;
     if (!supabase) return;
     void supabase.from("products").select("id,name,brand,model")
-      .eq("is_active", true).order("name").limit(500)
+      .eq("is_active", true).order("name").limit(1000)
       .then(({ data, error }) => {
         if (!active || error || !data) return;
         setCatalogueProducts(data.map(product => ({
@@ -199,8 +204,10 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
       <p className="muted">Help improve the catalogue by suggesting which parts fit, work with, replace or are not compatible with another product. Suggestions remain pending until reviewed.</p>
       {uniqueProducts.length < 2 ? <p className="empty">At least two active catalogue products are needed before a compatibility suggestion can be submitted.</p> :
         <form className="activity-form" onSubmit={submitCompatibility}>
-          <label>Part or accessory<select required value={compatPart} onChange={e => setCompatPart(e.target.value)}><option value="">Choose a product</option>{uniqueProducts.map(p => <option key={p.productId} value={p.productId}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
-          <label>Compatible product<select required value={compatTarget} onChange={e => setCompatTarget(e.target.value)}><option value="">Choose a product</option>{uniqueProducts.map(p => <option key={p.productId} value={p.productId} disabled={p.productId === compatPart}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
+          <label>Find a catalogue product<input type="search" value={compatibilitySearch} onChange={e => setCompatibilitySearch(e.target.value)} placeholder="Search name, brand or model…" /></label>
+          <label>Part or accessory<select required value={compatPart} onChange={e => setCompatPart(e.target.value)}><option value="">Choose a product</option>{visibleCompatibilityProducts.map(p => <option key={p.productId} value={p.productId}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
+          <label>Compatible product<select required value={compatTarget} onChange={e => setCompatTarget(e.target.value)}><option value="">Choose a product</option>{visibleCompatibilityProducts.map(p => <option key={p.productId} value={p.productId} disabled={p.productId === compatPart}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
+          {!visibleCompatibilityProducts.length && <p className="muted">No products match this search. Try another name, brand or model.</p>}
           <label>Relationship<select value={compatType} onChange={e => setCompatType(e.target.value)}><option value="fits">Fits</option><option value="works_with">Works with</option><option value="replacement_for">Replacement for</option><option value="not_compatible">Not compatible</option></select></label>
           <label>Evidence or notes (optional)<textarea rows={3} maxLength={1000} value={compatNotes} onChange={e => setCompatNotes(e.target.value)} placeholder="Add model numbers, version details or the basis for this suggestion." /></label>
           <button className="primary" type="submit" disabled={busy === "compatibility"}>{busy === "compatibility" ? "Submitting…" : "Submit suggestion"}</button>
