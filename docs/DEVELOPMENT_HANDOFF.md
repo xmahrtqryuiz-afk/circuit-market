@@ -65,6 +65,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 - The live Supabase migration ledger contains 24 applied migrations. Only one of the 17 historical migration source files is present in the working branch; seven incremental Phase 1 repair migrations are present and applied. See `docs/PHASE1_MIGRATION_RECONCILIATION.md`.
 - RLS is enabled on all audited public tables.
 - Nine Edge Functions are active with JWT verification enabled; all deployed function sources were checked against the working branch.
+- Marketplace activity now loads compatibility candidates from the active catalogue, verifies that seller deal confirmation actually updates an eligible row, and clears its loading state when deal retrieval fails.
 - Security and health advisors report no findings. Performance advisor reports informational unused-index notices; no indexes were removed.
 - Business verification is required before a store is considered verified for public listings, seller contact unlock, or buyer deal confirmation. Rejected sellers can re-enter review by submitting new business evidence.
 - Buyer deal-confirmation RLS now permits only a buyer (not the store owner) to confirm an active, approved listing from a business-verified store, and requires the buyer confirmation timestamp.
