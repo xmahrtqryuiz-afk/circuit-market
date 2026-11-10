@@ -154,7 +154,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     </section>
     <section className="activity-panel">
       <h3>Suggest product compatibility</h3>
-      <p className="muted">Help improve the catalogue by suggesting which parts fit, work with or replace another product. Suggestions remain pending until reviewed.</p>
+      <p className="muted">Help improve the catalogue by suggesting which parts fit, work with, replace or are not compatible with another product. Suggestions remain pending until reviewed.</p>
       {uniqueProducts.length < 2 ? <p className="empty">At least two active catalogue products are needed before a compatibility suggestion can be submitted.</p> :
         <form className="activity-form" onSubmit={submitCompatibility}>
           <label>Part or accessory<select required value={compatPart} onChange={e => setCompatPart(e.target.value)}><option value="">Choose a product</option>{uniqueProducts.map(p => <option key={p.productId} value={p.productId}>{p.name}{p.brand ? ` · ${p.brand}` : ""}{p.model ? ` ${p.model}` : ""}</option>)}</select></label>
