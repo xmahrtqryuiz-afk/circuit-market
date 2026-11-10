@@ -9,7 +9,7 @@ type Props = { onAuthChange?: (user: User | null) => void };
 export default function AccountAccess({ onAuthChange }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset" | "recovery">("signin");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [email, setEmail] = useState("");
@@ -65,9 +65,15 @@ export default function AccountAccess({ onAuthChange }: Props) {
       setUser(data.session?.user ?? null);
       onAuthChange?.(data.session?.user ?? null);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       onAuthChange?.(session?.user ?? null);
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("recovery");
+        setMessage("Choose a new password for your EZPREZZ account.");
+        setError("");
+        setOpen(true);
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, [onAuthChange]);
@@ -81,7 +87,18 @@ export default function AccountAccess({ onAuthChange }: Props) {
     }
     setBusy(true); setError(""); setMessage("");
     try {
-      if (mode === "signup") {
+      if (mode === "reset") {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+        if (resetError) throw resetError;
+        setMessage("If an account exists for that email, a password reset link will be sent.");
+      } else if (mode === "recovery") {
+        if (password.length < 8) throw new Error("Your new password must be at least 8 characters.");
+        const { error: updateError } = await supabase.auth.updateUser({ password });
+        if (updateError) throw updateError;
+        setMessage("Your password has been updated.");
+        setMode("signin");
+        setOpen(false);
+      } else if (mode === "signup") {
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -131,8 +148,8 @@ export default function AccountAccess({ onAuthChange }: Props) {
           <button className="primary full" onClick={signOut}>Sign out</button>
         </> : <>
           <div className="eyebrow">EZPREZZ ACCOUNT</div>
-          <h2 id="account-title">{mode === "signin" ? "Sign in" : "Create your account"}</h2>
-          <p>Use one account to buy, sell and contribute price observations on EZPREZZ.</p>
+          <h2 id="account-title">{mode === "signin" ? "Sign in" : mode === "signup" ? "Create your account" : mode === "reset" ? "Reset your password" : "Choose a new password"}</h2>
+          <p>{mode === "reset" ? "Enter the email address on your account and we will send a reset link." : mode === "recovery" ? "Choose a new password to finish recovering your account." : "Use one account to buy, sell and contribute price observations on EZPREZZ."}</p>
           <form onSubmit={submit}>
             <div className="formgrid account-form">
               {mode === "signup" && <>
@@ -140,15 +157,17 @@ export default function AccountAccess({ onAuthChange }: Props) {
                 <label>City<input autoComplete="address-level2" required value={city} onChange={e => setCity(e.target.value)} placeholder="Your city" /></label>
               </>}
               <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></label>
-              <label>Password<input type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={8} required value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" /></label>
+              {mode !== "reset" && <label>{mode === "recovery" ? "New password" : "Password"}<input type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={8} required value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" /></label>}
             </div>
             {error && <p className="account-error" role="alert">{error}</p>}
             {message && <p className="account-status" role="status">{message}</p>}
-            <button className="primary full" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}</button>
+            <button className="primary full" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : mode === "reset" ? "Send reset link" : "Update password"}</button>
           </form>
-          <button className="textbutton account-switch" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); setMessage(""); }}>
+          {mode === "signin" && <button className="textbutton account-switch" type="button" onClick={() => { setMode("reset"); setError(""); setMessage(""); setPassword(""); }}>Forgot your password?</button>}
+          {(mode === "signin" || mode === "signup") && <button className="textbutton account-switch" type="button" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); setMessage(""); setPassword(""); }}>
             {mode === "signin" ? "New to EZPREZZ? Create an account" : "Already have an account? Sign in"}
-          </button>
+          </button>}
+          {mode === "reset" && <button className="textbutton account-switch" type="button" onClick={() => { setMode("signin"); setError(""); setMessage(""); }}>Back to sign in</button>}
         </>}
       </section>
     </div>}
