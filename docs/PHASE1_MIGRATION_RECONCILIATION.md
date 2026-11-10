@@ -29,7 +29,8 @@ Repository branch: `obi/ezprezz-ui-refresh`
 | 20261110113425 | price_observation_evidence_url_insert_guard | Present; applied 2026-11-10 |
 | 20261110131040 | require_business_verification_for_public_sellers | Present; applied 2026-11-10 |
 | 20261110131303 | reopen_rejected_store_on_business_resubmission | Present; applied 2026-11-10 |
-| 20261110131536 | secure_buyer_deal_confirmation_start | Present; applied 2026-11-10 |\n| 20261110160645 | public_compatibility_review_filter_grant | Present; applied 2026-11-10 |
+| 20261110131536 | secure_buyer_deal_confirmation_start | Present; applied 2026-11-10 |
+| 20261110160645 | public_compatibility_review_filter_grant | Present; applied 2026-11-10 |
 
 GitHub history was queried for the entire `supabase/migrations` path; it returned no earlier migration commits. The 16 missing historical SQL files cannot be recovered from this repository's history.
 
