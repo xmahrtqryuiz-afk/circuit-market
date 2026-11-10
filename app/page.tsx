@@ -71,8 +71,8 @@ export default function Home() {
       try {
         const [catRes, listingRes, rangeRes] = await Promise.all([
           supabase.from("categories").select("id,name,slug").eq("is_active", true).order("sort_order"),
-          supabase.from("listings").select("id,product_id,seller_store_id,variant_label,item_condition,asking_price,city,area,notes,currency_code").eq("is_active", true).eq("moderation_status", "approved").order("created_at", { ascending: false }).limit(60),
-          supabase.from("price_range_snapshots").select("id,product_id,variant_label,item_condition,currency_code,geographic_level,sample_count,min_price,median_price,max_price").eq("snapshot_status", "published").order("calculated_at", { ascending: false }).limit(60)
+          supabase.from("listings").select("id,product_id,seller_store_id,variant_label,item_condition,asking_price,city,area,notes,currency_code").eq("is_active", true).eq("moderation_status", "approved").order("created_at", { ascending: false }).order("id", { ascending: false }).limit(60),
+          supabase.from("price_range_snapshots").select("id,product_id,variant_label,item_condition,currency_code,geographic_level,sample_count,min_price,median_price,max_price").eq("snapshot_status", "published").order("calculated_at", { ascending: false }).order("id", { ascending: false }).limit(60)
         ]);
         if (catRes.error) throw catRes.error;
         if (listingRes.error) throw listingRes.error;
@@ -255,7 +255,7 @@ export default function Home() {
       const { data: listings, error: listingError } = await supabase.from("listings")
         .select("id,product_id,seller_store_id,variant_label,item_condition,asking_price,city,area,notes,currency_code")
         .eq("is_active", true).eq("moderation_status", "approved")
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: false }).order("id", { ascending: false })
         .range(listingOffset, listingOffset + 59);
       if (listingError) throw listingError;
       const rows = listings ?? [];
@@ -312,7 +312,7 @@ export default function Home() {
       const { data, error: rangeError } = await supabase.from("price_range_snapshots")
         .select("id,product_id,variant_label,item_condition,currency_code,geographic_level,sample_count,min_price,median_price,max_price")
         .eq("snapshot_status", "published")
-        .order("calculated_at", { ascending: false })
+        .order("calculated_at", { ascending: false }).order("id", { ascending: false })
         .range(rangeOffset, rangeOffset + 59);
       if (rangeError) throw rangeError;
       const rows = (data ?? []) as PriceRange[];
