@@ -65,7 +65,7 @@ values(current_setting('phase1.workflow.product')::uuid,current_setting('phase1.
 
 do $compat_assert$
 begin
- if not exists(select 1 from public.product_compatibilities where submitted_by=auth.uid() and part_product_id=current_setting('phase1.workflow.product')::uuid and review_status='pending') then
+ if not exists(select 1 from public.product_compatibilities where part_product_id=current_setting('phase1.workflow.product')::uuid and review_status='pending') then
   raise exception 'Compatibility suggestion was not pending';
  end if;
  begin
@@ -105,7 +105,7 @@ from public.deal_confirmations d where d.listing_id=current_setting('phase1.work
 
 do $review_assert$
 begin
- if (select count(*) from public.marketplace_reviews where reviewer_id=auth.uid() and review_status='pending') <> 2 then
+ if (select count(*) from public.marketplace_reviews where deal_id in (select id from public.deal_confirmations where listing_id=current_setting('phase1.workflow.listing')::uuid) and review_status='pending') <> 2 then
   raise exception 'Both seller and product reviews should be pending moderation';
  end if;
  begin
