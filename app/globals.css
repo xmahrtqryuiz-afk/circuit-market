@@ -503,3 +503,42 @@ textarea:disabled {
   .pricemetric { padding: 10px 7px; }
   .pricemetric b { font-size: 11px; }
 }
+
+
+/* Buyer and seller marketplace activity workflows. */
+.activity-wrap { display:flex; flex-direction:column; gap:17px; margin:20px 0 38px; }
+.activity-panel { min-width:0; padding:20px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+.activity-panel h3 { margin:0 0 7px; font:800 16px Manrope,sans-serif; }
+.activity-panel>p { font-size:11px; line-height:1.65; }
+.activity-list { display:flex; flex-direction:column; }
+.activity-card { display:flex; flex-direction:column; gap:12px; padding:17px 0; border-top:1px solid var(--line); }
+.activity-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.activity-card-head>div { display:flex; min-width:0; flex-direction:column; gap:5px; }
+.activity-card-head b { font-size:12px; overflow-wrap:anywhere; }
+.activity-card-head small { color:var(--muted); font-size:10px; }
+.activity-status { flex:0 0 auto; padding:5px 8px; border-radius:7px; background:#fff5e3; color:#805a18; font-size:9px; font-weight:800; text-transform:capitalize; }
+.activity-status.confirmed { background:#eaf4eb; color:#28633b; }
+.activity-status.cancelled,.activity-status.disputed { background:#fff0ee; color:#9b3024; }
+.activity-meta { display:flex; flex-wrap:wrap; gap:7px; color:var(--muted); font-size:10px; }
+.activity-meta span { padding:5px 7px; border-radius:7px; background:#f6f8f5; }
+.review-forms { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.review-form-card { display:flex; min-width:0; flex-direction:column; gap:9px; padding:13px; border:1px solid var(--line); border-radius:11px; background:#fbfcfa; }
+.review-form-card>b { font-size:11px; }
+.review-form-card form,.activity-form { display:flex; flex-direction:column; gap:11px; }
+.review-form-card label,.activity-form label { display:flex; min-width:0; flex-direction:column; gap:6px; color:#536159; font-size:10px; font-weight:700; }
+.review-form-card input,.review-form-card select,.review-form-card textarea,.activity-form input,.activity-form select,.activity-form textarea { width:100%; min-width:0; padding:10px 11px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); font:12px 'DM Sans',sans-serif; }
+.activity-form { max-width:620px; margin-top:14px; }
+.activity-form .primary { align-self:flex-start; }
+.listing-engagement { margin:18px 0; padding:15px; border:1px solid var(--line); border-radius:12px; background:#fbfcfa; }
+.listing-engagement h3 { margin:0 0 6px; font:800 14px Manrope,sans-serif; }
+.listing-engagement .muted { margin:0 0 12px; font-size:10px; line-height:1.6; }
+.listing-engagement .activity-form { margin-top:10px; }
+.activity-panel .empty { margin-top:13px; padding:22px 15px; }
+@media(max-width:640px) {
+  .activity-panel { padding:15px; }
+  .review-forms { grid-template-columns:1fr; }
+  .activity-form .primary { width:100%; }
+  .activity-card-head { align-items:flex-start; }
+  .listing-engagement { padding:13px; }
+  .listing-engagement .secondary-action { width:100%; }
+}
