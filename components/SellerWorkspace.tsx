@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -16,6 +16,7 @@ const conditions = ["new", "used", "refurbished", "new_aftermarket", "used_salva
 const productTypes = ["finished_product", "spare_part", "component", "tool", "accessory"];
 
 export default function SellerWorkspace({ user, categories }: { user: User | null; categories: Category[] }) {
+  const lastWorkspaceUserId = useRef<string | null>(null);
   const [store, setStore] = useState<Store | null>(null);
   const [ownListings, setOwnListings] = useState<SellerListing[]>([]);
   const [ownRequests, setOwnRequests] = useState<ProductRequest[]>([]);
@@ -39,6 +40,16 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   useEffect(() => {
     let active = true;
     async function loadWorkspace() {
+      const nextUserId = user?.id ?? null;
+      if (lastWorkspaceUserId.current !== nextUserId) {
+        lastWorkspaceUserId.current = nextUserId;
+        setStoreForm({ store_name: "", description: "", city: "Port Harcourt", area: "", contact_phone: "", whatsapp_number: "" });
+        setListingForm({ product_id: "", variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "Port Harcourt", area: "", notes: "" });
+        setRequestForm({ requested_name: "", brand: "", model: "", product_type: "finished_product", category_id: "", compatibility_notes: "" });
+        setEditForm({ variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "", area: "", notes: "" });
+        setEditingId(""); setListingFilter("all"); setVerificationFile(null); setListingImages([]); setExtraImages({});
+        setMessage(""); setError("");
+      }
       if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); setImagesByListing({}); return; }
       setLoading(true); setError("");
       try {
