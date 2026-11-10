@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -33,7 +33,7 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
   const productMap = useMemo(() => new Map(uniqueProducts.map(p => [p.productId, p])), [uniqueProducts]);
   const storeMap = useMemo(() => new Map(stores.map(s => [s.id, s])), [stores]);
 
-  async function loadActivity() {
+  const loadActivity = useCallback(async () => {
     if (!supabase || !user) { setDeals([]); setStores([]); setListings({}); setReviews([]); return; }
     setError("");
     const storeResult = await supabase.from("seller_stores").select("id,store_name,owner_id").eq("owner_id", user.id);
@@ -63,9 +63,9 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
       if (!reviewResult.error) setReviews((reviewResult.data ?? []) as Review[]);
       else setReviews([]);
     } else setReviews([]);
-  }
+  }, [user]);
 
-  useEffect(() => { void loadActivity(); }, [user?.id]);
+  useEffect(() => { void loadActivity(); }, [loadActivity]);
 
   async function confirmSeller(deal: Deal) {
     if (!supabase || !user) return;
