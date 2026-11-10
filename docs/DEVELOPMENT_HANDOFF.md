@@ -62,10 +62,12 @@ Do not replace the Supabase client or project configuration as part of a visual 
 
 ## Backend foundation and real data status
 
-- The live Supabase migration ledger contains 22 applied migrations. Only one of the 17 historical migration source files is present in the working branch; five incremental Phase 1 repair migrations are present and applied. See `docs/PHASE1_MIGRATION_RECONCILIATION.md`.
+- The live Supabase migration ledger contains 23 applied migrations. Only one of the 17 historical migration source files is present in the working branch; six incremental Phase 1 repair migrations are present and applied. See `docs/PHASE1_MIGRATION_RECONCILIATION.md`.
 - RLS is enabled on all audited public tables.
 - Nine Edge Functions are active with JWT verification enabled; all deployed function sources were checked against the working branch.
 - Security and health advisors report no findings. Performance advisor reports informational unused-index notices; no indexes were removed.
+- Business verification is required before a store is considered verified for public listings, seller contact unlock, or buyer deal confirmation. Rejected sellers can re-enter review by submitting new business evidence.
+- Buyer deal-confirmation RLS now permits only a buyer (not the store owner) to confirm an active, approved listing from a business-verified store, and requires the buyer confirmation timestamp.
 - The first administrator role has not been assigned. The live project has no auth users or `admin_user_roles` assignments at the latest verified check. Do not invent an account identity or create a public bootstrap path.
 - Do not insert invented products, listings, seller identities, observations or prices to make screens look populated.
 
@@ -74,7 +76,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 - Listing image ordering/removal UI and richer inventory filters.
 - Seller verification upload retry/status polish and explicit resubmission feedback.
 - User-facing report submission and product compatibility contribution flows; the administrator queues exist, but these contributor workflows are not yet present in the current page UI.
-- Deal confirmation and marketplace review buyer/seller flows need end-to-end integration and validation.
+- Deal confirmation and marketplace review buyer/seller flows need frontend integration and end-to-end validation; the database deal-confirmation gate is now hardened.
 - Product request status/history polish for the requester.
 - Admin dashboard real-session testing and secure first-admin bootstrap.
 - Buyer, seller, contributor and administrator end-to-end testing with real sessions.
@@ -107,7 +109,7 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 ## Verification and release gates
 
 - The Next.js production build and Edge Function type checks passed in the last recorded Phase 1 CI run. The newest commits still need a fresh CI result; the current GitHub status check only reports a pending Vercel check.
-- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating and rejected-store resubmission. Test fixtures were confirmed absent after execution.
+- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, and buyer deal-confirmation access control. Test fixtures were confirmed absent after execution.
 - A clean development database has not been created because the free route does not provide the required isolated database/branch.
 - Vercel preview deployment is not yet verified.
 - Phase 1 is not complete until migration history is reproducible from a clean database, latest CI/build is green, real-session buyer/seller/admin workflows pass, Vercel preview is verified, and security/accessibility/release checks pass.
