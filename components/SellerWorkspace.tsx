@@ -129,6 +129,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         if (uploadError) throw uploadError;
         const { error: evidenceError } = await supabase.from("seller_verification_records").insert({ store_id: saved.id, submitted_by: user.id, verification_type: "business", evidence_storage_path: path, evidence_mime_type: verificationFile.type });
         if (evidenceError) { await supabase.storage.from("verification-documents").remove([path]); throw evidenceError; }
+        if (saved.verification_status === "rejected") setStore({ ...saved, verification_status: "pending", verification_level: "unverified" });
         setVerificationFile(null);
         const [storeRefresh, verificationRefresh] = await Promise.all([
           supabase.from("seller_stores").select("id,store_name,description,city,area,verification_status,verification_level,is_open").eq("id", saved.id).single(),
