@@ -29,6 +29,10 @@ export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [ranges, setRanges] = useState<PriceRange[]>([]);
+  const [rangeOffset, setRangeOffset] = useState(0);
+  const [hasMoreRanges, setHasMoreRanges] = useState(false);
+  const [loadingMoreRanges, setLoadingMoreRanges] = useState(false);
+  const [rangeLoadError, setRangeLoadError] = useState("");
   const [catalogueProductNames, setCatalogueProductNames] = useState<Record<string, string>>({});
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
@@ -101,7 +105,7 @@ export default function Home() {
           return [{ id: row.id, productId: row.product_id, name: p.name, brand: p.brand ?? null, model: p.model ?? null, category: catMap.get(p.category_id) ?? "Electronics", variant: row.variant_label || "", condition: row.item_condition, price: Number(row.asking_price), seller: s.store_name, storeId: row.seller_store_id, area: row.area || s.area || "", city: row.city || s.city, description: row.notes || p.description || "Seller listing. Confirm availability and specifications with the seller.", imageUrl: imageMap.get(row.id)?.[0]?.url ?? null, imageAlt: imageMap.get(row.id)?.[0]?.alt ?? p.name, images: imageMap.get(row.id) ?? [] }];
         });
         if (!alive) return;
-        setCategories(catRes.data ?? []); setProducts(mapped); setListingOffset(listings.length); setHasMoreListings(listings.length === 60); setLoadMoreError(""); setRanges(publishedRanges); setCatalogueProductNames(Object.fromEntries((prodRes.data ?? []).map(x => [x.id, x.name])));
+        setCategories(catRes.data ?? []); setProducts(mapped); setListingOffset(listings.length); setHasMoreListings(listings.length === 60); setLoadMoreError(""); setRanges(publishedRanges); setRangeOffset(publishedRanges.length); setHasMoreRanges(publishedRanges.length === 60); setRangeLoadError(""); setCatalogueProductNames(Object.fromEntries((prodRes.data ?? []).map(x => [x.id, x.name])));
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : "Could not load the public catalogue.");
       } finally { if (alive) setLoading(false); }
@@ -300,6 +304,36 @@ export default function Home() {
     }
   }
 
+  async function loadMorePriceRanges() {
+    if (!supabase || loadingMoreRanges || !hasMoreRanges) return;
+    setLoadingMoreRanges(true);
+    setRangeLoadError("");
+    try {
+      const { data, error: rangeError } = await supabase.from("price_range_snapshots")
+        .select("id,product_id,variant_label,item_condition,currency_code,geographic_level,sample_count,min_price,median_price,max_price")
+        .eq("snapshot_status", "published")
+        .order("calculated_at", { ascending: false })
+        .range(rangeOffset, rangeOffset + 59);
+      if (rangeError) throw rangeError;
+      const rows = (data ?? []) as PriceRange[];
+      if (!rows.length) { setHasMoreRanges(false); return; }
+      const missingProductIds = [...new Set(rows.map(row => row.product_id).filter(id => !catalogueProductNames[id]))];
+      if (missingProductIds.length) {
+        const { data: productsResult, error: productsError } = await supabase.from("products")
+          .select("id,name").in("id", missingProductIds).eq("is_active", true);
+        if (productsError) throw productsError;
+        setCatalogueProductNames(current => ({ ...current, ...Object.fromEntries((productsResult ?? []).map(product => [product.id, product.name])) }));
+      }
+      setRanges(current => [...current, ...rows]);
+      setRangeOffset(current => current + rows.length);
+      setHasMoreRanges(rows.length === 60);
+    } catch (err) {
+      setRangeLoadError(err instanceof Error ? err.message : "More PriceCheck ranges could not be loaded.");
+    } finally {
+      setLoadingMoreRanges(false);
+    }
+  }
+
   return <main className="shell">
     <header className="topbar"><a className="brand" href="#" aria-label={`${brand.name} home`} onClick={() => setTab("Home")}><span className="brandmark">{brand.name}<span className="brandmark-symbol">»</span></span></a><span className="location">⌖ {brand.defaultLocationLabel}</span><AccountAccess onAuthChange={setUser}/></header>
     <section className="hero"><div className="eyebrow">{brand.name} · ELECTRONICS MARKETPLACE</div><h1>Find it. Compare it.<br/><em>Buy with confidence.</em></h1><p>Explore electronics, compare seller prices and connect with shops around Port Harcourt.</p><div className="searchbar"><span>⌕</span><input aria-label="Search electronics listings" value={query} onChange={e => {setQuery(e.target.value); setTab("Explore");}} placeholder="Search phones, parts, laptops, tools..."/><button onClick={() => setTab("Explore")}>Search</button></div><div className="hero-note"><span className="dot"/> Live catalogue · Published price evidence only</div></section>
@@ -314,7 +348,7 @@ export default function Home() {
       <div className="callout"><div><div className="eyebrow">KNOW THE MARKET</div><h2>Check prices before you buy.</h2><p>Published PriceCheck ranges use reviewed evidence. Seller asking prices remain separate.</p></div><button onClick={() => setTab("PriceCheck")}>Open PriceCheck →</button></div>
     </>}
     {!loading && tab === "Explore" && <><section className="sectionhead"><div><div className="eyebrow">THE MARKETPLACE</div><h2>Explore products</h2><p className="muted">Showing {filtered.length} matches across {products.length}{hasMoreListings ? "+" : ""} loaded listings</p></div>{(category !== "All" || query.trim()) && <button className="filter-reset" onClick={() => {setCategory("All"); setQuery("");}}>Clear filters</button>}</section><div className="filters" aria-label="Filter listings by category">{categoryNames.map(c => <button key={c} type="button" aria-pressed={category === c} className={category === c ? "chosen" : ""} onClick={() => setCategory(c)}>{c}</button>)}</div>{filtered.length ? <ProductGrid products={filtered} onSelect={setSelected}/> : <div className="empty search-empty"><b>No matching listings in the loaded results</b><p>Try another search or category, or load more listings to search further through the catalogue.</p><button className="textbutton" onClick={() => {setCategory("All"); setQuery("");}}>Clear search and filters →</button></div>}{hasMoreListings && <div className="load-more-wrap">{loadMoreError && <p className="account-error" role="alert">{loadMoreError}</p>}<button className="secondary-action" type="button" onClick={loadMoreListings} disabled={loadingMoreListings}>{loadingMoreListings ? "Loading listings…" : "Load more listings"}</button></div>}<p className="disclaimer">Only active listings approved by moderation and belonging to verified stores are shown.</p></>}
-    {!loading && tab === "PriceCheck" && <><section className="sectionhead"><div><div className="eyebrow">PRICE INTELLIGENCE</div><h2>PriceCheck</h2><p className="muted">Published ranges from reviewed price evidence.</p></div></section><div className="pricebanner"><span>₦</span><div><b>Evidence before estimates</b><small>Seller asking prices are not treated as verified market prices.</small></div></div>{ranges.length ? <div className="pricegroups">{ranges.map(r => <article className="pricegroup" key={r.id}><div className="pricegrouphead"><b>{catalogueProductNames[r.product_id] || "Product price range"}{r.variant_label ? ` · ${r.variant_label}` : ""}</b><div className="pricecontext"><span>{r.item_condition.replaceAll("_", " ")}</span><span>{r.geographic_level.replaceAll("_", " ")}</span><span>{r.sample_count} reviewed {r.sample_count === 1 ? "observation" : "observations"}</span></div></div><div className="priceitems" aria-label="Published price summary"><div className="pricemetric"><span>Minimum</span><b>{r.min_price == null ? "—" : money(Number(r.min_price), r.currency_code)}</b></div><div className="pricemetric median"><span>Median</span><b>{r.median_price == null ? "—" : money(Number(r.median_price), r.currency_code)}</b></div><div className="pricemetric"><span>Maximum</span><b>{r.max_price == null ? "—" : money(Number(r.max_price), r.currency_code)}</b></div></div><p className="pricefootnote">Published evidence snapshot · Seller asking prices are separate</p></article>)}</div> : <div className="empty">No published price ranges yet. Price reports will appear here only after review and when evidence thresholds are met.</div>}<PriceContribution user={user} onRequestProduct={() => setTab("Sell")}/></>}
+    {!loading && tab === "PriceCheck" && <><section className="sectionhead"><div><div className="eyebrow">PRICE INTELLIGENCE</div><h2>PriceCheck</h2><p className="muted">Published ranges from reviewed price evidence.</p></div></section><div className="pricebanner"><span>₦</span><div><b>Evidence before estimates</b><small>Seller asking prices are not treated as verified market prices.</small></div></div>{ranges.length ? <div className="pricegroups">{ranges.map(r => <article className="pricegroup" key={r.id}><div className="pricegrouphead"><b>{catalogueProductNames[r.product_id] || "Product price range"}{r.variant_label ? ` · ${r.variant_label}` : ""}</b><div className="pricecontext"><span>{r.item_condition.replaceAll("_", " ")}</span><span>{r.geographic_level.replaceAll("_", " ")}</span><span>{r.sample_count} reviewed {r.sample_count === 1 ? "observation" : "observations"}</span></div></div><div className="priceitems" aria-label="Published price summary"><div className="pricemetric"><span>Minimum</span><b>{r.min_price == null ? "—" : money(Number(r.min_price), r.currency_code)}</b></div><div className="pricemetric median"><span>Median</span><b>{r.median_price == null ? "—" : money(Number(r.median_price), r.currency_code)}</b></div><div className="pricemetric"><span>Maximum</span><b>{r.max_price == null ? "—" : money(Number(r.max_price), r.currency_code)}</b></div></div><p className="pricefootnote">Published evidence snapshot · Seller asking prices are separate</p></article>)}</div> : <div className="empty">No published price ranges yet. Price reports will appear here only after review and when evidence thresholds are met.</div>}{hasMoreRanges && <div className="load-more-wrap">{rangeLoadError && <p className="account-error" role="alert">{rangeLoadError}</p>}<button className="secondary-action" type="button" onClick={loadMorePriceRanges} disabled={loadingMoreRanges}>{loadingMoreRanges ? "Loading price ranges…" : "Load more PriceCheck ranges"}</button></div>}<PriceContribution user={user} onRequestProduct={() => setTab("Sell")}/></>}
     {!loading && tab === "Sell" && <><section className="sectionhead"><div><div className="eyebrow">FOR SELLERS</div><h2>Seller workspace</h2><p className="muted">Register your store, manage inventory and request missing catalogue products.</p></div></section><SellerWorkspace user={user} categories={categories}/></>}
     {!loading && tab === "My Activity" && <MarketplaceActivity user={user} products={activityProducts}/>}
     <AdminDashboard user={user} active={tab === "Admin"} onAccessChange={setAdminAccess} categories={categories}/>
