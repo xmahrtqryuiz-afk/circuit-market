@@ -101,7 +101,7 @@ export default function PriceContribution({ user, onRequestProduct }: { user: Us
   if (!user) return <section className="formcard"><div className="eyebrow">CONTRIBUTE TO PRICECHECK</div><h3>Share a real price observation</h3><p className="muted">Sign in to submit a price observation. All reports are reviewed before they can influence published ranges.</p></section>;
   if (loading) return <div className="empty">Loading your PriceCheck workspace…</div>;
 
-  const visibleProducts = products.filter(product => [product.name, product.brand, product.model].filter(Boolean).join(" ").toLowerCase().includes(productSearch.trim().toLowerCase()));
+  const visibleProducts = products.filter(product => product.id === form.product_id || [product.name, product.brand, product.model].filter(Boolean).join(" ").toLowerCase().includes(productSearch.trim().toLowerCase()));
 
   const productName = (id: string) => {
     const product = products.find(item => item.id === id);
