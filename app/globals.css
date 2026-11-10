@@ -635,3 +635,29 @@ textarea:disabled {
   min-width: min(100%, 220px);
   min-height: 46px;
 }
+
+
+.seller-workspace-toolbar,
+.contribution-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.seller-workspace-toolbar {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+}
+.contribution-heading { margin-bottom: 12px; }
+.contribution-heading h3 { margin: 0; }
+@media (max-width: 560px) {
+  .seller-workspace-toolbar,
+  .contribution-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .seller-workspace-toolbar .filter-reset,
+  .contribution-heading .filter-reset {
+    align-self: flex-start;
+  }
+}
