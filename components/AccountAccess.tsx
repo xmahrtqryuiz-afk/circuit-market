@@ -141,7 +141,7 @@ export default function AccountAccess({ onAuthChange }: Props) {
     {open && <div className="modalback" onClick={() => setOpen(false)}>
       <section ref={dialogRef} className="modal account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title" tabIndex={-1} onClick={event => event.stopPropagation()}>
         <button ref={closeButtonRef} className="close" type="button" aria-label="Close account dialog" onClick={() => setOpen(false)}>×</button>
-        {user ? <>
+        {user && mode !== "recovery" ? <>
           <div className="eyebrow">YOUR EZPREZZ ACCOUNT</div>
           <h2 id="account-title">Welcome back</h2>
           <p>{user.email}</p>
