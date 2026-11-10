@@ -25,6 +25,8 @@ export default function AdminDashboard({ user, active, onAccessChange, categorie
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [priceFlagOverrides, setPriceFlagOverrides] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState("All");
+  const [roleTargetId, setRoleTargetId] = useState("");
+  const [roleToManage, setRoleToManage] = useState("moderator");
 
   const load = useCallback(async (quiet = false) => {
     if (!user || !supabase) { setQueues(emptyQueues); setRoles([]); onAccessChange(false); return; }
@@ -75,6 +77,33 @@ export default function AdminDashboard({ user, active, onAccessChange, categorie
     }
   }
 
+  async function manageRole(action: "grant" | "revoke") {
+    if (!supabase) return;
+    const targetId = roleTargetId.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetId)) {
+      setError("Enter a valid Auth user UUID.");
+      return;
+    }
+    setBusyId("role-management");
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke("admin-manage-roles", {
+        body: { user_id: targetId, role: roleToManage, action },
+      });
+      if (invokeError || data?.error || data?.success === false) {
+        throw new Error(data?.error || invokeError?.message || "Administrator role could not be changed.");
+      }
+      setNotice(action === "grant" ? "Administrator role granted." : "Administrator role revoked.");
+      setRoleTargetId("");
+      await load(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Administrator role could not be changed.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   const total = queues.stores.length + queues.listings.length + queues.priceObservations.length + queues.productRequests.length + queues.reports.length + queues.compatibilities.length;
   const visible = filter === "All" ? ["Stores", "Listings", "PriceCheck", "Product requests", "Reports", "Compatibility"] : [filter];
 
@@ -87,6 +116,7 @@ export default function AdminDashboard({ user, active, onAccessChange, categorie
     <div className="admin-roleline">Your permissions: {roles.map(role => <span key={role} className="admin-role">{role.replaceAll("_", " ")}</span>)}</div>
     {error && <p className="account-error" role="alert">{error}</p>}
     {notice && <p className="seller-success" role="status">{notice}</p>}
+    {roles.includes("super_admin") && <section className="admin-queue admin-role-management"><div className="eyebrow">ACCESS CONTROL</div><h3>Administrator role management</h3><p className="muted">Grant or revoke an administrator role using the target account’s Supabase Auth user UUID. These changes are recorded by the protected role-management service.</p><div className="admin-role-form"><label>Target Auth user UUID<input value={roleTargetId} onChange={event => setRoleTargetId(event.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autoComplete="off" /></label><label>Role<select value={roleToManage} onChange={event => setRoleToManage(event.target.value)}><option value="moderator">Moderator</option><option value="support">Support</option><option value="price_reviewer">Price reviewer</option><option value="catalog_manager">Catalogue manager</option><option value="super_admin">Super administrator</option></select></label><div className="admin-role-actions"><button className="primary" type="button" disabled={!!busyId || !roleTargetId.trim()} onClick={() => void manageRole("grant")}>{busyId === "role-management" ? "Saving…" : "Grant role"}</button><button className="secondary-action" type="button" disabled={!!busyId || !roleTargetId.trim()} onClick={() => void manageRole("revoke")}>Revoke role</button></div></div></section>}
     <div className="admin-filters">{["All", "Stores", "Listings", "PriceCheck", "Product requests", "Reports", "Compatibility"].map(name => <button key={name} className={filter === name ? "chosen" : ""} onClick={() => setFilter(name)}>{name}</button>)}</div>
     {loading ? <div className="empty">Loading protected moderation queues…</div> : <>
       {visible.includes("Stores") && <section className="admin-queue"><div className="admin-queue-title"><div><div className="eyebrow">SELLER VERIFICATION</div><h3>Stores awaiting review <span className="count-pill">{queues.stores.length}</span></h3></div></div>
