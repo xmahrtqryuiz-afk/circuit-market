@@ -25,7 +25,8 @@ The working branch is a development workspace for the same app, not a second app
 - `components/AccountAccess.tsx`: email sign-up, sign-in and sign-out.
 - `components/SellerWorkspace.tsx`: seller store onboarding, private contact settings, listing submission, inventory status and product requests.
 - `components/PriceContribution.tsx`: signed-in price observation submission and contributor history.
-- `components/AdminDashboard.tsx`: protected moderation dashboard.\n- `components/MarketplaceActivity.tsx`: buyer/seller deal confirmations, verified-deal reviews and product compatibility submissions.
+- `components/AdminDashboard.tsx`: protected moderation dashboard.
+- `components/MarketplaceActivity.tsx`: buyer/seller deal confirmations, verified-deal reviews and product compatibility submissions.
 - `config/brand.ts`: customer-facing brand identity and theme values.
 - `lib/supabase.ts`: browser Supabase client using the existing project URL and public publishable/anon key.
 
