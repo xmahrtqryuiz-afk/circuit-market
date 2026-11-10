@@ -578,3 +578,14 @@ textarea:disabled {
 .seller-inventory-filters button { flex:0 0 auto; min-height:34px; padding:8px 11px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); font-size:10px; font-weight:700; cursor:pointer; }
 .seller-inventory-filters button.chosen { border-color:var(--green); background:var(--green); color:#fff; }
 @media(max-width:640px) { .seller-inventory-filters button { min-height:40px; } }
+
+
+.seller-image-add { display:flex; flex:1 0 100%; align-items:flex-end; flex-wrap:wrap; gap:10px; padding:10px 12px; border:1px dashed #d4dfd7; border-radius:10px; background:#fff; }
+.seller-image-add label { display:flex; min-width:180px; flex:1; flex-direction:column; gap:5px; color:var(--muted); font-size:10px; font-weight:700; }
+.seller-image-add input { width:100%; min-width:0; color:var(--ink); font:10px 'DM Sans',sans-serif; }
+.seller-image-add small { color:var(--muted); font-size:9px; font-weight:400; }
+.seller-image-add button { min-height:36px; padding:8px 11px; }
+@media(max-width:560px) {
+  .seller-image-add { align-items:stretch; flex-direction:column; }
+  .seller-image-add button { width:100%; min-height:44px; }
+}
