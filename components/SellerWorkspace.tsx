@@ -119,15 +119,13 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         if (uploadError) throw uploadError;
         const { error: evidenceError } = await supabase.from("seller_verification_records").insert({ store_id: saved.id, submitted_by: user.id, verification_type: "business", evidence_storage_path: path, evidence_mime_type: verificationFile.type });
         if (evidenceError) { await supabase.storage.from("verification-documents").remove([path]); throw evidenceError; }
+        setVerificationFile(null);
         const [storeRefresh, verificationRefresh] = await Promise.all([
           supabase.from("seller_stores").select("id,store_name,description,city,area,verification_status,verification_level,is_open").eq("id", saved.id).single(),
           supabase.from("seller_verification_records").select("id,verification_type,verification_status,created_at").eq("store_id", saved.id).order("created_at", { ascending: false }).limit(10),
         ]);
-        if (storeRefresh.error) throw storeRefresh.error;
-        if (verificationRefresh.error) throw verificationRefresh.error;
-        setStore(storeRefresh.data as Store);
-        setVerificationRecords((verificationRefresh.data ?? []) as VerificationRecord[]);
-        setVerificationFile(null);
+        if (!storeRefresh.error && storeRefresh.data) setStore(storeRefresh.data as Store);
+        if (!verificationRefresh.error) setVerificationRecords((verificationRefresh.data ?? []) as VerificationRecord[]);
       }
       setMessage("Your store details have been saved. Verification remains subject to EZPREZZ review.");
     } catch (err) {
