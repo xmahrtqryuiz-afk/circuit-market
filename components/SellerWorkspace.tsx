@@ -9,6 +9,7 @@ type Store = { id: string; store_name: string; description: string | null; city:
 type CatalogueProduct = { id: string; name: string; brand: string | null; model: string | null; category_id: string };
 type SellerListing = { id: string; product_id: string; product_name: string; asking_price: number; item_condition: string; variant_label: string | null; quantity: number; city: string; area: string | null; notes: string | null; is_active: boolean; moderation_status: string; created_at: string };
 type ProductRequest = { id: string; requested_name: string; brand: string | null; model: string | null; request_status: string; created_at: string };
+type VerificationRecord = { id: string; verification_type: string; verification_status: string; created_at: string };
 
 const conditions = ["new", "used", "refurbished", "new_aftermarket", "used_salvaged"];
 const productTypes = ["finished_product", "spare_part", "component", "tool", "accessory"];
@@ -17,6 +18,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   const [store, setStore] = useState<Store | null>(null);
   const [ownListings, setOwnListings] = useState<SellerListing[]>([]);
   const [ownRequests, setOwnRequests] = useState<ProductRequest[]>([]);
+  const [verificationRecords, setVerificationRecords] = useState<VerificationRecord[]>([]);
   const [editingId, setEditingId] = useState("");
   const [editForm, setEditForm] = useState({ variant_label: "", item_condition: "new", asking_price: "", quantity: "1", city: "", area: "", notes: "" });
   const [catalogue, setCatalogue] = useState<CatalogueProduct[]>([]);
@@ -33,7 +35,7 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
   useEffect(() => {
     let active = true;
     async function loadWorkspace() {
-      if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); setOwnRequests([]); return; }
+      if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); return; }
       setLoading(true); setError("");
       try {
         const [storeResult, productsResult] = await Promise.all([
@@ -45,12 +47,18 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         if (!active) return;
         setStore(storeResult.data as Store | null);
         setCatalogue((productsResult.data ?? []) as CatalogueProduct[]);
+        if (!storeResult.data) { setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); }
         if (storeResult.data) {
           const s = storeResult.data as Store;
-          const { data: contactData, error: contactError } = await supabase.from("seller_store_contacts").select("contact_phone,whatsapp_number").eq("store_id", s.id).maybeSingle();
-          if (contactError) throw contactError;
+          const [contactResult, verificationResult] = await Promise.all([
+            supabase.from("seller_store_contacts").select("contact_phone,whatsapp_number").eq("store_id", s.id).maybeSingle(),
+            supabase.from("seller_verification_records").select("id,verification_type,verification_status,created_at").eq("store_id", s.id).order("created_at", { ascending: false }).limit(10),
+          ]);
+          if (contactResult.error) throw contactResult.error;
+          if (verificationResult.error) throw verificationResult.error;
           if (!active) return;
-          setStoreForm({ store_name: s.store_name, description: s.description ?? "", city: s.city, area: s.area ?? "", contact_phone: contactData?.contact_phone ?? "", whatsapp_number: contactData?.whatsapp_number ?? "" });
+          setVerificationRecords((verificationResult.data ?? []) as VerificationRecord[]);
+          setStoreForm({ store_name: s.store_name, description: s.description ?? "", city: s.city, area: s.area ?? "", contact_phone: contactResult.data?.contact_phone ?? "", whatsapp_number: contactResult.data?.whatsapp_number ?? "" });
           const [listingResult, requestResult] = await Promise.all([
             supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label,quantity,city,area,notes,is_active,moderation_status,created_at").eq("seller_store_id", s.id).order("created_at", { ascending: false }),
             supabase.from("product_requests").select("id,requested_name,brand,model,request_status,created_at").eq("requested_by", user.id).order("created_at", { ascending: false }).limit(20),
@@ -111,6 +119,14 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
         if (uploadError) throw uploadError;
         const { error: evidenceError } = await supabase.from("seller_verification_records").insert({ store_id: saved.id, submitted_by: user.id, verification_type: "business", evidence_storage_path: path, evidence_mime_type: verificationFile.type });
         if (evidenceError) { await supabase.storage.from("verification-documents").remove([path]); throw evidenceError; }
+        const [storeRefresh, verificationRefresh] = await Promise.all([
+          supabase.from("seller_stores").select("id,store_name,description,city,area,verification_status,verification_level,is_open").eq("id", saved.id).single(),
+          supabase.from("seller_verification_records").select("id,verification_type,verification_status,created_at").eq("store_id", saved.id).order("created_at", { ascending: false }).limit(10),
+        ]);
+        if (storeRefresh.error) throw storeRefresh.error;
+        if (verificationRefresh.error) throw verificationRefresh.error;
+        setStore(storeRefresh.data as Store);
+        setVerificationRecords((verificationRefresh.data ?? []) as VerificationRecord[]);
         setVerificationFile(null);
       }
       setMessage("Your store details have been saved. Verification remains subject to EZPREZZ review.");
@@ -231,7 +247,9 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
     <section className="formcard">
       <div className="eyebrow">SELLER PROFILE</div>
       <h3>{store ? "Your store" : "Register your store"}</h3>
-      {store && <p className="store-status">Verification: <b>{store.verification_status.replaceAll("_", " ")}</b> · Level: {store.verification_level.replaceAll("_", " ")}</p>}
+      {store && <p className="store-status">Business verification: <b>{store.verification_status.replaceAll("_", " ")}</b> · Account level: {store.verification_level.replaceAll("_", " ")}</p>}
+      {store?.verification_status === "rejected" && <p className="account-error">Your previous business evidence was rejected. You can submit a new document below to re-enter the review queue.</p>}
+      {store && verificationRecords.length > 0 && <div className="verification-history"><b>Business evidence history</b>{verificationRecords.map(record => <div key={record.id}><span>{record.verification_type.replaceAll("_", " ")}</span><strong className={"listing-status status-" + record.verification_status}>{record.verification_status.replaceAll("_", " ")}</strong><small>{new Date(record.created_at).toLocaleDateString("en-NG")}</small></div>)}</div>}
       <form onSubmit={saveStore}>
         <div className="formgrid">
           <label>Store name<input required maxLength={100} value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} placeholder="Your shop or business name" /></label>
