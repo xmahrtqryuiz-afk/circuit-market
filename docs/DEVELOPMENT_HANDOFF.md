@@ -45,7 +45,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 - Email/password sign-up, sign-in and sign-out are connected to the existing Supabase Auth tenant.
 - Authenticated sellers can register a store, update its public profile and save phone/WhatsApp values in the private `seller_store_contacts` table.
 - Sellers can submit listings for review against active catalogue products, with up to five JPG/PNG/WebP photos (5 MB each) uploaded to the existing listing-images bucket.
-- Sellers can edit listing details and deactivate their own listings; the database trigger retains existing price-flag and moderation checks.
+- Sellers can edit listing details, deactivate their own listings, preview their listing photos, reorder photos they uploaded and remove their own photos; the database trigger retains existing price-flag and moderation checks.
 - Sellers can view listing status and recent product request statuses.
 - Sellers can request missing catalogue products; requests remain pending until the existing admin process accepts or rejects them.
 - Sellers can submit business verification documents to the existing private verification-documents bucket; only authorised reviewers receive short-lived signed review links.
@@ -73,7 +73,7 @@ Do not replace the Supabase client or project configuration as part of a visual 
 
 ## Remaining frontend and integration work
 
-- Listing image ordering/removal UI and richer inventory filters.
+- Additional-photo uploads to existing listings and richer inventory filters.
 - Listing image ordering/removal UI and a guided retry path for failed image uploads.
 - User-facing report submission and product compatibility contribution flows; the administrator queues exist, but these contributor workflows are not yet present in the current page UI.
 - Deal confirmation and marketplace review buyer/seller flows need frontend integration and end-to-end validation; the database deal-confirmation gate is now hardened.
@@ -109,7 +109,7 @@ All screens must be mobile-first and responsive. Reuse the EZPREZZ brand configu
 ## Verification and release gates
 
 - The Next.js production build and Edge Function type checks passed in the last recorded Phase 1 CI run. The newest commits still need a fresh CI result; the latest commit status only exposes a pending Vercel check. The Vercel team context currently lists no linked projects, so that check cannot yet be verified against a deployment.
-- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, buyer deal-confirmation access control, and the reports/compatibility/deal/review contributor lifecycle, and public approved-only compatibility visibility. The newest contributor workflow test passed inside a transaction, and a follow-up query confirmed zero remaining synthetic users, stores, products, deals, reports, compatibility rows or reviews.
+- Rollback-safe SQL regression tests cover atomic marketplace operations, seller listing moderation, PriceCheck evidence, seller verification submission, business verification gating/resubmission, buyer deal-confirmation access control, and the reports/compatibility/deal/review contributor lifecycle, public approved-only compatibility visibility, and seller listing-image reorder/delete permissions. The newest contributor workflow test passed inside a transaction, and a follow-up query confirmed zero remaining synthetic users, stores, products, deals, reports, compatibility rows or reviews.
 - A clean development database has not been created because the free route does not provide the required isolated database/branch.
 - Vercel preview deployment is not yet verified.
 - Phase 1 is not complete until migration history is reproducible from a clean database, latest CI/build is green, real-session buyer/seller/admin workflows pass, Vercel preview is verified, and security/accessibility/release checks pass.
