@@ -105,9 +105,46 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!selected) return;
+    setReportOpen(false);
+    setReportDetails("");
+    setReportError("");
+    setReportMessage("");
+    setDealMessage("");
+    setCompatibilityLinks([]);
+    if (!selected) { setCompatibilityLoading(false); return; }
+    let compatibilityAlive = true;
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeButtonRef.current?.focus();
+
+    if (supabase) {
+      setCompatibilityLoading(true);
+      void (async () => {
+        const result = await supabase.from("product_compatibilities")
+          .select("id,part_product_id,compatible_product_id,compatibility_type,notes")
+          .eq("review_status", "approved")
+          .or("part_product_id.eq." + selected.productId + ",compatible_product_id.eq." + selected.productId)
+          .limit(12);
+        if (!compatibilityAlive) return;
+        if (result.error) { setCompatibilityLoading(false); return; }
+        const rows = result.data ?? [];
+        const otherIds = [...new Set(rows.map(row => row.part_product_id === selected.productId ? row.compatible_product_id : row.part_product_id))];
+        const otherResult = otherIds.length
+          ? await supabase.from("products").select("id,name,brand,model").in("id", otherIds).eq("is_active", true)
+          : { data: [], error: null };
+        if (!compatibilityAlive) return;
+        const names = new Map<string, string>();
+        for (const product of otherResult.data ?? []) names.set(product.id, [product.brand, product.name, product.model].filter(Boolean).join(" · "));
+        const links: CompatibilityLink[] = [];
+        for (const row of rows) {
+          const outgoing = row.part_product_id === selected.productId;
+          const otherId = outgoing ? row.compatible_product_id : row.part_product_id;
+          const otherProductName = names.get(otherId);
+          if (otherProductName) links.push({ id: row.id, compatibility_type: row.compatibility_type, notes: row.notes, otherProductName, direction: outgoing ? "outgoing" : "incoming" });
+        }
+        setCompatibilityLinks(links);
+        setCompatibilityLoading(false);
+      })();
+    } else setCompatibilityLoading(false);
 
     function handleDialogKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -117,36 +154,28 @@ export default function Home() {
         return;
       }
       if (event.key !== "Tab") return;
-
       const dialog = dialogRef.current;
       if (!dialog) return;
       const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
       )).filter(element => element.getAttribute("aria-hidden") !== "true");
-      if (!focusable.length) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-
+      if (!focusable.length) { event.preventDefault(); dialog.focus(); return; }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
-        event.preventDefault();
-        last.focus();
+        event.preventDefault(); last.focus();
       } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
-        event.preventDefault();
-        first.focus();
+        event.preventDefault(); first.focus();
       }
     }
 
     window.addEventListener("keydown", handleDialogKeyDown);
     return () => {
+      compatibilityAlive = false;
       window.removeEventListener("keydown", handleDialogKeyDown);
       if (previouslyFocused?.isConnected) previouslyFocused.focus();
     };
   }, [selected]);
-
   const categoryNames = ["All", ...categories.map(c => c.name)];
 
   async function unlockSellerContact(channel: "phone" | "whatsapp") {
