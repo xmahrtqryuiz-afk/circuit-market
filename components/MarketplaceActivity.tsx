@@ -125,10 +125,15 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
       store_id: type === "seller" ? deal.store_id : null,
       product_id: type === "product" ? listing.product_id : null,
     };
-    const { error: insertError } = await supabase.from("marketplace_reviews").insert(payload);
-    if (insertError) setError(insertError.code === "23505" ? "You have already submitted this review." : insertError.message);
-    else { setMessage(`${type === "seller" ? "Seller" : "Product"} review submitted for moderation.`); await loadActivity(); }
-    setBusy("");
+    try {
+      const { error: insertError } = await supabase.from("marketplace_reviews").insert(payload);
+      if (insertError) setError(insertError.code === "23505" ? "You have already submitted this review." : insertError.message);
+      else { setMessage(`${type === "seller" ? "Seller" : "Product"} review submitted for moderation.`); await loadActivity(); }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "The review could not be submitted.");
+    } finally {
+      setBusy("");
+    }
   }
 
   async function submitCompatibility(event: FormEvent<HTMLFormElement>) {
@@ -136,13 +141,18 @@ export default function MarketplaceActivity({ user, products }: { user: User | n
     if (!supabase || !user) return;
     if (!compatPart || !compatTarget || compatPart === compatTarget) { setError("Choose two different catalogue products."); return; }
     setBusy("compatibility"); setError(""); setMessage("");
-    const { error: insertError } = await supabase.from("product_compatibilities").insert({
-      part_product_id: compatPart, compatible_product_id: compatTarget,
-      compatibility_type: compatType, notes: compatNotes.trim() || null, submitted_by: user.id,
-    });
-    if (insertError) setError(insertError.code === "23505" ? "That compatibility suggestion has already been submitted." : insertError.message);
-    else { setMessage("Compatibility suggestion submitted for catalogue review."); setCompatNotes(""); }
-    setBusy("");
+    try {
+      const { error: insertError } = await supabase.from("product_compatibilities").insert({
+        part_product_id: compatPart, compatible_product_id: compatTarget,
+        compatibility_type: compatType, notes: compatNotes.trim() || null, submitted_by: user.id,
+      });
+      if (insertError) setError(insertError.code === "23505" ? "That compatibility suggestion has already been submitted." : insertError.message);
+      else { setMessage("Compatibility suggestion submitted for catalogue review."); setCompatNotes(""); }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "The compatibility suggestion could not be submitted.");
+    } finally {
+      setBusy("");
+    }
   }
 
   if (!user) return <section className="activity-panel"><h3>Your marketplace activity</h3><p>Sign in to manage deal confirmations, submit reviews and suggest product compatibility.</p></section>;
