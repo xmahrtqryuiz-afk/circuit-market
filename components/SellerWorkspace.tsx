@@ -55,16 +55,19 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
       if (!user || !supabase) { setStore(null); setCatalogue([]); setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); setImagesByListing({}); return; }
       setLoading(true); setError("");
       try {
-        const [storeResult, productsResult] = await Promise.all([
+        const [storeResult, productsResult, requestResult] = await Promise.all([
           supabase.from("seller_stores").select("id,store_name,description,city,area,verification_status,verification_level,is_open").eq("owner_id", user.id).maybeSingle(),
           supabase.from("products").select("id,name,brand,model,category_id").eq("is_active", true).order("name").limit(1000),
+          supabase.from("product_requests").select("id,requested_name,brand,model,request_status,created_at").eq("requested_by", user.id).order("created_at", { ascending: false }).limit(20),
         ]);
         if (storeResult.error) throw storeResult.error;
         if (productsResult.error) throw productsResult.error;
+        if (requestResult.error) throw requestResult.error;
         if (!active) return;
         setStore(storeResult.data as Store | null);
         setCatalogue((productsResult.data ?? []) as CatalogueProduct[]);
-        if (!storeResult.data) { setOwnListings([]); setOwnRequests([]); setVerificationRecords([]); setImagesByListing({}); }
+        setOwnRequests((requestResult.data ?? []) as ProductRequest[]);
+        if (!storeResult.data) { setOwnListings([]); setVerificationRecords([]); setImagesByListing({}); }
         if (storeResult.data) {
           const s = storeResult.data as Store;
           const [contactResult, verificationResult] = await Promise.all([
@@ -76,12 +79,8 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           if (!active) return;
           setVerificationRecords((verificationResult.data ?? []) as VerificationRecord[]);
           setStoreForm({ store_name: s.store_name, description: s.description ?? "", city: s.city, area: s.area ?? "", contact_phone: contactResult.data?.contact_phone ?? "", whatsapp_number: contactResult.data?.whatsapp_number ?? "" });
-          const [listingResult, requestResult] = await Promise.all([
-            supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label,quantity,city,area,notes,is_active,moderation_status,created_at").eq("seller_store_id", s.id).order("created_at", { ascending: false }),
-            supabase.from("product_requests").select("id,requested_name,brand,model,request_status,created_at").eq("requested_by", user.id).order("created_at", { ascending: false }).limit(20),
-          ]);
+          const listingResult = await supabase.from("listings").select("id,product_id,asking_price,item_condition,variant_label,quantity,city,area,notes,is_active,moderation_status,created_at").eq("seller_store_id", s.id).order("created_at", { ascending: false });
           if (listingResult.error) throw listingResult.error;
-          if (requestResult.error) throw requestResult.error;
           const listingIds = (listingResult.data ?? []).map(row => row.id);
           const imageResult = listingIds.length
             ? await supabase.from("listing_images").select("id,listing_id,storage_path,alt_text,sort_order,image_review_status").in("listing_id", listingIds).order("sort_order")
@@ -92,7 +91,6 @@ export default function SellerWorkspace({ user, categories }: { user: User | nul
           for (const image of (imageResult.data ?? []) as SellerImage[]) (imageMap[image.listing_id] ??= []).push(image);
           if (!active) return;
           setOwnListings((listingResult.data ?? []).map(row => ({ ...row, product_name: productNames.get(row.product_id) ?? "Catalogue product" })) as SellerListing[]);
-          setOwnRequests((requestResult.data ?? []) as ProductRequest[]);
           setImagesByListing(imageMap);
         }
       } catch (err) {
