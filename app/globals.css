@@ -572,3 +572,9 @@ textarea:disabled {
   .seller-image-card>img { height:104px; }
   .seller-image-actions button { flex:1; }
 }
+
+
+.seller-inventory-filters { display:flex; gap:7px; overflow-x:auto; margin:4px 0 12px; padding:2px 1px 8px; scrollbar-width:thin; }
+.seller-inventory-filters button { flex:0 0 auto; min-height:34px; padding:8px 11px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); font-size:10px; font-weight:700; cursor:pointer; }
+.seller-inventory-filters button.chosen { border-color:var(--green); background:var(--green); color:#fff; }
+@media(max-width:640px) { .seller-inventory-filters button { min-height:40px; } }
