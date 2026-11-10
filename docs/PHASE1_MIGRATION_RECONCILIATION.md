@@ -24,7 +24,7 @@ Repository branch: `obi/ezprezz-ui-refresh`
 | 20261107232813 | signup_city_and_least_privilege_catalogue_reads | Present |
 | 20261108073723 | claude_write_test | Missing |
 | 20261108073730 | claude_write_test_cleanup | Missing |
-| 20261110112813 | phase1_atomic_marketplace_operations | Present; applied 2026-11-10 |
+| 20261110112813 | phase1_atomic_marketplace_operations | Present; applied 2026-11-10 |\n| 20261110113313 | seller_listing_moderation_insert_guard | Present; applied 2026-11-10 |
 
 GitHub history was queried for the entire `supabase/migrations` path; it returned no earlier migration commits. The 16 missing historical SQL files cannot be recovered from this repository's history.
 
@@ -35,16 +35,16 @@ GitHub history was queried for the entire `supabase/migrations` path; it returne
 - Do not apply a guessed historical baseline to the live database.
 - Preserve the existing 20261107232813 migration source.
 - Reconstruct a clearly labelled baseline/recovery sequence from a complete live-schema export, then validate it against a clean development database before treating the history as reproducible.
-- The incremental Phase 1 repair migration is `20261110112813_phase1_atomic_marketplace_operations.sql`. It is intentionally separate from historical recovery work.
+- The incremental Phase 1 repair migrations are `20261110112813_phase1_atomic_marketplace_operations.sql` and `20261110113313_seller_listing_moderation_insert_guard.sql`. They are intentionally separate from historical recovery work.
 
 ## Current validation state
 
-- Live ledger contains 18 applied migrations: 17 historical records plus the incremental Phase 1 repair.
-- Working branch contains one historical migration source plus the new incremental repair migration.
+- Live ledger contains 19 applied migrations: 17 historical records plus two incremental Phase 1 repairs.
+- Working branch contains one historical migration source plus both incremental Phase 1 repair migrations.
 - No historical migration rows have been modified.
 - The incremental repair migration was first executed inside a transaction and rolled back; a synthetic integration smoke test exercised the critical write paths and security restrictions without retaining fixture data.
 - The incremental repair migration was subsequently applied and recorded in the live ledger.
 - All eight dependent Edge Functions were redeployed; all nine deployed functions are active with JWT verification enabled.
 - Supabase security and health advisors report no findings.
 - A separate clean development database has not been created. Supabase branching required paid-plan access, and creating a second project requested cost confirmation; neither was used for this free-route validation.
-- The rollback-safe integration test is preserved at `supabase/tests/phase1_atomic_marketplace_operations.test.sql`.
+- Rollback-safe tests are preserved at `supabase/tests/phase1_atomic_marketplace_operations.test.sql` and `supabase/tests/seller_listing_moderation_policy.test.sql`. The latter verifies sellers can submit listings for review but cannot self-publish.
